@@ -6,7 +6,7 @@ const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-IN', {
       day: '2-digit', month: 'long', year: 'numeric',
     })
-  } catch { return dateString }
+  } catch { return dateString || '' }
 }
 
 // ─── Training Checklist Report (A4 Portrait) ─────────────────────────────────
@@ -17,7 +17,6 @@ export const generateChecklistReport = (submission) => {
   // Header bar
   doc.setFillColor(67, 45, 133)
   doc.rect(0, 0, W, 32, 'F')
-
   doc.setTextColor(255, 255, 255)
   doc.setFontSize(20)
   doc.setFont('helvetica', 'bold')
@@ -45,7 +44,7 @@ export const generateChecklistReport = (submission) => {
     doc.text(stampLabel, W - 35, 44, { align: 'center' })
   }
 
-  // Section: Training Details
+  // Training Details
   doc.setTextColor(112, 59, 150)
   doc.setFontSize(12)
   doc.setFont('helvetica', 'bold')
@@ -78,9 +77,8 @@ export const generateChecklistReport = (submission) => {
     margin: { left: 14, right: 14 },
   })
 
-  // Section: Module Status (Yes & No only)
+  // Module Status (Yes & No only — NA excluded)
   const detailsEnd = doc.lastAutoTable.finalY + 8
-
   doc.setTextColor(112, 59, 150)
   doc.setFontSize(12)
   doc.setFont('helvetica', 'bold')
@@ -89,10 +87,9 @@ export const generateChecklistReport = (submission) => {
   doc.setLineWidth(0.5)
   doc.line(14, detailsEnd + 2, W - 14, detailsEnd + 2)
 
-  // Filter out NA
   const checklistRows = Object.entries(submission.checklist)
-    .filter(([, status]) => status !== 'NA')
-    .map(([module, status]) => [module, status])
+    .filter(([, s]) => s !== 'NA')
+    .map(([module, s]) => [module, s])
 
   if (checklistRows.length === 0) {
     doc.setFontSize(10)
@@ -106,10 +103,7 @@ export const generateChecklistReport = (submission) => {
       theme: 'striped',
       headStyles: { fillColor: [67, 45, 133], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 10 },
       bodyStyles: { fontSize: 10 },
-      columnStyles: {
-        0: { cellWidth: 140 },
-        1: { cellWidth: 30, halign: 'center' },
-      },
+      columnStyles: { 0: { cellWidth: 140 }, 1: { cellWidth: 30, halign: 'center' } },
       didParseCell(data) {
         if (data.section === 'body' && data.column.index === 1) {
           const v = data.cell.text[0]
@@ -121,16 +115,11 @@ export const generateChecklistReport = (submission) => {
     })
   }
 
-  let nextY = checklistRows.length === 0
-    ? detailsEnd + 20
-    : doc.lastAutoTable.finalY + 8
+  let nextY = checklistRows.length === 0 ? detailsEnd + 20 : doc.lastAutoTable.finalY + 8
 
-  // Comments section
-  const hasComments = submission.additionalComments || submission.handoverComment
-  if (hasComments) {
-    // check if we need new page
+  // Comments
+  if (submission.handoverComment || submission.additionalComments) {
     if (nextY > 250) { doc.addPage(); nextY = 20 }
-
     doc.setTextColor(112, 59, 150)
     doc.setFontSize(12)
     doc.setFont('helvetica', 'bold')
@@ -141,11 +130,11 @@ export const generateChecklistReport = (submission) => {
     nextY += 8
 
     if (submission.handoverComment) {
-      const stampColor = submission.handoverStatus === 'approved' ? [21, 128, 61] : submission.handoverStatus === 'rejected' ? [185, 28, 28] : [107, 114, 128]
+      const c = submission.handoverStatus === 'approved' ? [21, 128, 61] : [185, 28, 28]
       doc.setFontSize(10)
       doc.setFont('helvetica', 'bold')
-      doc.setTextColor(...stampColor)
-      const label = submission.handoverStatus === 'approved' ? 'Approval Comment' : submission.handoverStatus === 'rejected' ? 'Rejection Reason' : 'Decision Comment'
+      doc.setTextColor(...c)
+      const label = submission.handoverStatus === 'approved' ? 'Approval Comment' : 'Rejection Reason'
       doc.text(`${label}:`, 14, nextY)
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(30, 30, 30)
@@ -168,7 +157,7 @@ export const generateChecklistReport = (submission) => {
     }
   }
 
-  // Signature area
+  // Signature lines
   const sigY = nextY + 10
   if (sigY < 270) {
     doc.setDrawColor(148, 163, 184)
@@ -178,7 +167,7 @@ export const generateChecklistReport = (submission) => {
     doc.setFontSize(9)
     doc.setTextColor(71, 85, 105)
     doc.setFont('helvetica', 'normal')
-    doc.text(submission.bdmName,       52,  sigY + 5, { align: 'center' })
+    doc.text(submission.bdmName,       52,  sigY + 5,  { align: 'center' })
     doc.text('BDM',                    52,  sigY + 10, { align: 'center' })
     doc.text(submission.supportMember, 157, sigY + 5,  { align: 'center' })
     doc.text('Support Team',           157, sigY + 10, { align: 'center' })
@@ -193,9 +182,11 @@ export const generateCertificate = (submission) => {
   const W = 297
   const H = 210
 
+  // Background
   doc.setFillColor(254, 252, 243)
   doc.rect(0, 0, W, H, 'F')
 
+  // Borders
   doc.setDrawColor(112, 59, 150)
   doc.setLineWidth(3)
   doc.rect(8, 8, W - 16, H - 16)
@@ -203,138 +194,162 @@ export const generateCertificate = (submission) => {
   doc.setDrawColor(184, 127, 220)
   doc.rect(12, 12, W - 24, H - 24)
 
+  // Header bar
   doc.setFillColor(67, 45, 133)
-  doc.rect(8, 8, W - 16, 30, 'F')
-
+  doc.rect(8, 8, W - 16, 28, 'F')
   doc.setTextColor(255, 255, 255)
-  doc.setFontSize(20)
+  doc.setFontSize(18)
   doc.setFont('helvetica', 'bold')
   doc.text('TatvaCare', W / 2, 19, { align: 'center' })
-  doc.setFontSize(9)
+  doc.setFontSize(8)
   doc.setFont('helvetica', 'normal')
-  doc.text('Healthcare Technology Solutions', W / 2, 27, { align: 'center' })
+  doc.text('Healthcare Technology Solutions', W / 2, 26, { align: 'center' })
 
+  // Certificate title
   doc.setTextColor(112, 59, 150)
-  doc.setFontSize(22)
+  doc.setFontSize(18)
   doc.setFont('helvetica', 'bold')
-  doc.text('CERTIFICATE OF TRAINING COMPLETION', W / 2, 56, { align: 'center' })
+  doc.text('CERTIFICATE OF TRAINING COMPLETION', W / 2, 47, { align: 'center' })
 
+  // Gold divider
   doc.setDrawColor(202, 138, 4)
-  doc.setLineWidth(1.2)
-  doc.line(W / 2 - 90, 61, W / 2 + 90, 61)
+  doc.setLineWidth(1)
+  doc.line(W / 2 - 85, 51, W / 2 + 85, 51)
 
+  // Certify + Doctor
   doc.setTextColor(71, 85, 105)
-  doc.setFontSize(11)
+  doc.setFontSize(10)
   doc.setFont('helvetica', 'normal')
-  doc.text('This is to certify that', W / 2, 74, { align: 'center' })
+  doc.text('This is to certify that', W / 2, 60, { align: 'center' })
 
-  doc.setTextColor(112, 59, 150)
-  doc.setFontSize(24)
-  doc.setFont('helvetica', 'bold')
   const doctorLabel = submission.doctorName.toLowerCase().startsWith('dr')
     ? submission.doctorName : `Dr. ${submission.doctorName}`
-  doc.text(doctorLabel, W / 2, 87, { align: 'center' })
+
+  doc.setTextColor(112, 59, 150)
+  doc.setFontSize(20)
+  doc.setFont('helvetica', 'bold')
+  doc.text(doctorLabel, W / 2, 71, { align: 'center' })
 
   doc.setDrawColor(112, 59, 150)
   doc.setLineWidth(0.5)
-  const nameW = (doc.getStringUnitWidth(doctorLabel) * 24) / doc.internal.scaleFactor
-  doc.line(W / 2 - nameW / 2, 90, W / 2 + nameW / 2, 90)
+  const nameW = (doc.getStringUnitWidth(doctorLabel) * 20) / doc.internal.scaleFactor
+  doc.line(W / 2 - nameW / 2, 74, W / 2 + nameW / 2, 74)
 
-  doc.setTextColor(71, 85, 105)
-  doc.setFontSize(11)
-  doc.setFont('helvetica', 'normal')
+  // Clinic
   const location = [submission.doctorCity, submission.doctorState].filter(Boolean).join(', ')
   const clinicLine = location ? `${submission.clinicName}, ${location}` : submission.clinicName
-  doc.text(`of  ${clinicLine}`, W / 2, 100, { align: 'center' })
-  doc.text('has successfully completed training on the following TatvaCare modules:', W / 2, 110, { align: 'center' })
+  doc.setTextColor(71, 85, 105)
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'normal')
+  doc.text(`of  ${clinicLine}`, W / 2, 82, { align: 'center' })
+  doc.text('has successfully completed training on the following TatvaPractice modules:', W / 2, 90, { align: 'center' })
 
+  // YES modules grid
   const yesModules = Object.entries(submission.checklist)
     .filter(([, v]) => v === 'Yes').map(([k]) => k)
 
+  const GRID_Y = 97
+  const ROW_H = 7
+  const COLS = 4
+  const moduleRows = yesModules.length === 0 ? 0 : Math.ceil(yesModules.length / COLS)
+
   if (yesModules.length === 0) {
-    doc.setFontSize(10)
+    doc.setFontSize(9)
     doc.setTextColor(148, 163, 184)
-    doc.text('(No modules marked as completed)', W / 2, 125, { align: 'center' })
+    doc.text('(No modules marked as completed)', W / 2, GRID_Y + 5, { align: 'center' })
   } else {
-    const cols = Math.min(yesModules.length, 4)
-    const colW = (W - 80) / cols
-    doc.setFontSize(10)
+    const colW = (W - 60) / COLS
+    doc.setFontSize(9)
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(21, 128, 61)
     yesModules.forEach((mod, i) => {
-      const cx = 40 + (i % cols) * colW + colW / 2
-      const cy = 122 + Math.floor(i / cols) * 10
+      const cx = 30 + (i % COLS) * colW + colW / 2
+      const cy = GRID_Y + Math.floor(i / COLS) * ROW_H
       doc.text(`\u2713  ${mod}`, cx, cy, { align: 'center' })
     })
   }
 
-  const moduleRows = yesModules.length === 0 ? 1 : Math.ceil(yesModules.length / 4)
-  const dateY = 122 + moduleRows * 10 + 6
-
+  // Training date
+  const afterGridY = GRID_Y + Math.max(1, moduleRows) * ROW_H + 4
   doc.setTextColor(71, 85, 105)
-  doc.setFontSize(10)
+  doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
-  doc.text(`Training Completed on:  ${formatDate(submission.trainingDate)}`, W / 2, dateY, { align: 'center' })
+  doc.text(`Training Completed on: ${formatDate(submission.trainingDate)}`, W / 2, afterGridY, { align: 'center' })
 
-  // Acknowledgment text
-  const ackY = 122 + moduleRows * 10 + 18
+  // ── Acknowledgment box ────────────────────────────────────────────────────
+  const ackY = afterGridY + 7
+  const ackBoxH = 32
 
   doc.setFillColor(245, 238, 250)
-  doc.roundedRect(20, ackY - 5, W - 40, 16, 2, 2, 'F')
-  doc.setFontSize(9.5)
-  doc.setFont('helvetica', 'italic')
-  doc.setTextColor(67, 45, 133)
-  const doctorLabel2 = submission.doctorName.toLowerCase().startsWith('dr')
-    ? submission.doctorName : `Dr. ${submission.doctorName}`
-  doc.text(
-    `"I, ${doctorLabel2}, acknowledge that I have received the training from ${submission.bdmName} on ${formatDate(submission.trainingDate)}."`,
-    W / 2, ackY + 4, { align: 'center', maxWidth: W - 50 }
-  )
+  doc.setDrawColor(184, 127, 220)
+  doc.setLineWidth(0.4)
+  doc.roundedRect(16, ackY, W - 32, ackBoxH, 2, 2, 'FD')
 
-  // Signatures
-  const sigY = H - 32
+  // Paragraph
+  const ackText =
+    `I, ${doctorLabel}, hereby confirm that I have completed the training on TatvaPractice EMR software. ` +
+    `I have received training on all the modules listed above (checked as "Yes") and have understood the ` +
+    `functionalities of the software. I acknowledge that I can request further assistance or support if required.`
+
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(30, 20, 60)
+  const ackLines = doc.splitTextToSize(ackText, W - 44)
+  doc.text(ackLines, W / 2, ackY + 7, { align: 'center' })
+
+  // Signature line inside box
+  const sigLineY = ackY + ackBoxH - 7
+  doc.setFontSize(8.5)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(30, 20, 60)
+
+  doc.text('\u2022  Doctor\'s Signature:', 20, sigLineY)
+  doc.setDrawColor(100, 100, 100)
+  doc.setLineWidth(0.3)
+  doc.line(68, sigLineY, 148, sigLineY)
+
+  doc.text('\u2022  Date:', 152, sigLineY)
+  doc.line(165, sigLineY, W - 18, sigLineY)
+
+  // ── Bottom signature row ──────────────────────────────────────────────────
+  const bottomSigY = ackY + ackBoxH + 12
 
   doc.setDrawColor(148, 163, 184)
   doc.setLineWidth(0.4)
+  doc.line(20, bottomSigY, 85, bottomSigY)
+  doc.line(W / 2 - 32, bottomSigY, W / 2 + 32, bottomSigY)
+  doc.line(W - 85, bottomSigY, W - 52, bottomSigY)
 
-  // Doctor signature
-  doc.line(20, sigY, 78, sigY)
-  // BDM signature
-  doc.line(W / 2 - 30, sigY, W / 2 + 30, sigY)
-  // Support signature
-  doc.line(W - 78, sigY, W - 20, sigY)
-
-  doc.setFontSize(9)
-  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8.5)
   doc.setTextColor(71, 85, 105)
+  doc.setFont('helvetica', 'normal')
 
-  const docName2 = submission.doctorName.toLowerCase().startsWith('dr')
-    ? submission.doctorName : `Dr. ${submission.doctorName}`
-  doc.text(docName2,             49,  sigY + 5, { align: 'center' })
-  doc.text('Doctor / Recipient', 49,  sigY + 10, { align: 'center' })
+  doc.text(submission.bdmName,       52,     bottomSigY + 5,  { align: 'center' })
+  doc.text('BDM / Trainer',          52,     bottomSigY + 10, { align: 'center' })
+  doc.text(submission.supportMember, W / 2,  bottomSigY + 5,  { align: 'center' })
+  doc.text('Support Team',           W / 2,  bottomSigY + 10, { align: 'center' })
+  doc.text('Authorised Signatory',   W - 68, bottomSigY + 5,  { align: 'center' })
+  doc.text('TatvaCare',              W - 68, bottomSigY + 10, { align: 'center' })
 
-  doc.text(submission.bdmName,   W / 2, sigY + 5,  { align: 'center' })
-  doc.text('BDM / Trainer',      W / 2, sigY + 10, { align: 'center' })
+  // ── TatvaCare Stamp ───────────────────────────────────────────────────────
+  const stX = W - 28
+  const stY = bottomSigY + 2
+  const stR = 14
 
-  doc.text(submission.supportMember, W - 49, sigY + 5,  { align: 'center' })
-  doc.text('Support Team',           W - 49, sigY + 10, { align: 'center' })
-
-  // TatvaCare stamp (bottom right corner)
-  const stX = W - 26
-  const stY = H - 26
-  const stR = 16
+  doc.setFillColor(255, 255, 255)
   doc.setDrawColor(67, 45, 133)
   doc.setLineWidth(1.5)
-  doc.circle(stX, stY, stR)
+  doc.circle(stX, stY, stR, 'FD')
   doc.setLineWidth(0.5)
-  doc.circle(stX, stY, stR - 2.5)
+  doc.circle(stX, stY, stR - 2, 'S')
 
-  doc.setFontSize(6)
+  doc.setFontSize(5.5)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(67, 45, 133)
-  doc.text('TATVACARE',   stX, stY - 5,  { align: 'center' })
-  doc.text('HEALTHCARE',  stX, stY,      { align: 'center' })
-  doc.text('TECHNOLOGY',  stX, stY + 5,  { align: 'center' })
+  doc.text('TATVACARE',   stX, stY - 4,  { align: 'center' })
+  doc.text('\u2605',      stX, stY - 0.5, { align: 'center' })
+  doc.text('HEALTHCARE',  stX, stY + 3,  { align: 'center' })
+  doc.text('TECHNOLOGY',  stX, stY + 7,  { align: 'center' })
 
   return doc
 }

@@ -69,7 +69,7 @@ export default function Checklist() {
 
   const yesCount = Object.values(checklist).filter((v) => v === 'Yes').length
 
-  const handleSubmit = async (decisionStatus) => {
+  const handleSubmit = (decisionStatus) => {
     if (!isFormValid || !decisionStatus) return
     setSubmitStatus('submitting')
     setError('')
@@ -83,7 +83,7 @@ export default function Checklist() {
       submittedAt: new Date().toISOString(),
     }
 
-    // Step 1: Generate PDFs first (synchronous, no network dependency)
+    // Step 1: Generate PDFs (synchronous — no network needed)
     try {
       const checklistDoc = generateChecklistReport(submission)
       const certDoc = generateCertificate(submission)
@@ -98,24 +98,20 @@ export default function Checklist() {
       return
     }
 
-    // Step 2: Save to backend (don't block success screen on this)
-    try {
-      if (isFirebaseConfigured && db) {
-        await Promise.race([
-          addDoc(collection(db, 'submissions'), submission),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
-        ])
-      } else {
-        const existing = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
-        existing.unshift({ ...submission, id: Date.now().toString() })
-        localStorage.setItem('tc_submissions', JSON.stringify(existing))
-      }
-    } catch (saveErr) {
-      console.error('Save error:', saveErr)
-      // PDFs are already generated — show success but warn about save failure
-      setError('PDFs generated but could not save to database. Please screenshot or download PDFs now.')
+    // Step 2: Save in background — never block the UI
+    // Always save to localStorage immediately
+    const existing = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
+    existing.unshift({ ...submission, id: Date.now().toString() })
+    localStorage.setItem('tc_submissions', JSON.stringify(existing))
+
+    // Also push to Firebase in background (fire and forget)
+    if (isFirebaseConfigured && db) {
+      addDoc(collection(db, 'submissions'), submission).catch((e) =>
+        console.error('Firebase save failed (data saved locally):', e)
+      )
     }
 
+    // Show success immediately — don't wait for network
     setHandoverStatus(decisionStatus)
     setSubmitStatus('success')
   }
