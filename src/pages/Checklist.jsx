@@ -98,17 +98,20 @@ export default function Checklist() {
       return
     }
 
-    // Step 2: Save in background — never block the UI
-    // Always save to localStorage immediately
+    // Step 2: Save — localStorage first (instant), then Firebase
     const existing = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
     existing.unshift({ ...submission, id: Date.now().toString() })
     localStorage.setItem('tc_submissions', JSON.stringify(existing))
 
-    // Also push to Firebase in background (fire and forget)
     if (isFirebaseConfigured && db) {
-      addDoc(collection(db, 'submissions'), submission).catch((e) =>
-        console.error('Firebase save failed (data saved locally):', e)
+      // Try Firebase with a 10s timeout — if it fails, data is still in localStorage
+      const savePromise = addDoc(collection(db, 'submissions'), submission)
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 10000)
       )
+      Promise.race([savePromise, timeout]).catch((e) => {
+        console.error('Firebase save failed — data saved locally only:', e)
+      })
     }
 
     // Show success immediately — don't wait for network

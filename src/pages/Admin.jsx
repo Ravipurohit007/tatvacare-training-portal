@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
+import { collection, query, orderBy, onSnapshot, addDoc } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../lib/firebase'
 import { generateChecklistReport, generateCertificate } from '../lib/pdfGenerator'
 
@@ -208,8 +208,25 @@ export default function Admin() {
       const q = query(collection(db, 'submissions'), orderBy('submittedAt', 'desc'))
       const unsub = onSnapshot(
         q,
-        (snap) => {
-          setSubmissions(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+        async (snap) => {
+          const firebaseData = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+
+          // Sync any localStorage-only entries up to Firebase (one-time migration)
+          const localData = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
+          if (localData.length > 0) {
+            const fbTimes = new Set(firebaseData.map((s) => s.submittedAt))
+            const missing = localData.filter((s) => s.submittedAt && !fbTimes.has(s.submittedAt))
+            if (missing.length > 0) {
+              for (const entry of missing) {
+                const { id: _localId, ...data } = entry
+                try { await addDoc(collection(db, 'submissions'), data) } catch (_) {}
+              }
+              // onSnapshot will fire again with the newly synced docs — no need to setSubmissions here
+              return
+            }
+          }
+
+          setSubmissions(firebaseData)
           setLoading(false)
         },
         (err) => {
@@ -217,7 +234,6 @@ export default function Admin() {
           setFirebaseReadError(err.code === 'permission-denied'
             ? 'Firestore read permission denied. Update your Firestore rules to allow reads.'
             : err.message)
-          // Fall back to localStorage so at least local data is visible
           const data = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
           setSubmissions(data)
           setLoading(false)
