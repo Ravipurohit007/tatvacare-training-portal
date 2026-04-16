@@ -116,6 +116,7 @@ function DetailModal({ submission, onClose }) {
               ['BDM',                  submission.bdmName],
               ['AM',                   submission.amName || '—'],
               ['Support Team',         submission.supportMember],
+              ['Handover Status',      submission.handoverStatus ? submission.handoverStatus.charAt(0).toUpperCase() + submission.handoverStatus.slice(1) : 'Pending'],
             ].map(([k, v]) => (
               <div key={k}>
                 <p className="text-xs text-slate-400 mb-0.5">{k}</p>
@@ -123,6 +124,26 @@ function DetailModal({ submission, onClose }) {
               </div>
             ))}
           </div>
+
+          {/* Comments */}
+          {(submission.handoverComment || submission.additionalComments) && (
+            <div className="space-y-2">
+              {submission.handoverComment && (
+                <div className={`rounded-lg px-3 py-2 text-sm ${submission.handoverStatus === 'approved' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                  <p className={`text-xs font-semibold mb-0.5 ${submission.handoverStatus === 'approved' ? 'text-green-700' : 'text-red-700'}`}>
+                    {submission.handoverStatus === 'approved' ? 'Approval Comment' : 'Rejection Reason'}
+                  </p>
+                  <p className="text-slate-700">{submission.handoverComment}</p>
+                </div>
+              )}
+              {submission.additionalComments && (
+                <div className="rounded-lg px-3 py-2 text-sm bg-slate-50 border border-slate-200">
+                  <p className="text-xs font-semibold text-slate-500 mb-0.5">Additional Comments</p>
+                  <p className="text-slate-700">{submission.additionalComments}</p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Checklist */}
           <div>
@@ -286,6 +307,7 @@ export default function Admin() {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Training Date</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">BDM</th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">Yes Modules</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">Handover</th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Submitted</th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">Actions</th>
                   </tr>
@@ -300,8 +322,19 @@ export default function Admin() {
                       <td className="px-4 py-3 text-slate-600">{s.bdmName}</td>
                       <td className="px-4 py-3 text-center">
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                          {yesCount(s.checklist)} / 18
+                          {yesCount(s.checklist)} / 20
                         </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {s.handoverStatus === 'approved' && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">✓ Approved</span>
+                        )}
+                        {s.handoverStatus === 'rejected' && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">✗ Rejected</span>
+                        )}
+                        {!s.handoverStatus && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-500">Pending</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">
                         {formatDateTime(s.submittedAt)}

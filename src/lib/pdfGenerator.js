@@ -4,13 +4,9 @@ import autoTable from 'jspdf-autotable'
 const formatDate = (dateString) => {
   try {
     return new Date(dateString).toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
+      day: '2-digit', month: 'long', year: 'numeric',
     })
-  } catch {
-    return dateString
-  }
+  } catch { return dateString }
 }
 
 // ─── Training Checklist Report (A4 Portrait) ─────────────────────────────────
@@ -26,46 +22,55 @@ export const generateChecklistReport = (submission) => {
   doc.setFontSize(20)
   doc.setFont('helvetica', 'bold')
   doc.text('TatvaCare', 14, 13)
-
   doc.setFontSize(10)
   doc.setFont('helvetica', 'normal')
   doc.text('Healthcare Technology Solutions', 14, 21)
-
   doc.setFontSize(14)
   doc.setFont('helvetica', 'bold')
   doc.text('Training Completion Report', W / 2, 13, { align: 'center' })
-
   doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
   doc.text(`Generated: ${new Date().toLocaleDateString('en-IN')}`, W - 14, 26, { align: 'right' })
+
+  // Handover status stamp
+  const status = submission.handoverStatus
+  if (status === 'approved' || status === 'rejected') {
+    const stampColor = status === 'approved' ? [21, 128, 61] : [185, 28, 28]
+    const stampLabel = status === 'approved' ? 'APPROVED' : 'REJECTED'
+    doc.setFillColor(...stampColor)
+    doc.roundedRect(W - 56, 36, 42, 12, 2, 2, 'F')
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.text(stampLabel, W - 35, 44, { align: 'center' })
+  }
 
   // Section: Training Details
   doc.setTextColor(112, 59, 150)
   doc.setFontSize(12)
   doc.setFont('helvetica', 'bold')
-  doc.text('Training Details', 14, 44)
-
+  doc.text('Training Details', 14, 53)
   doc.setDrawColor(112, 59, 150)
   doc.setLineWidth(0.5)
-  doc.line(14, 46, W - 14, 46)
+  doc.line(14, 55, W - 14, 55)
 
   autoTable(doc, {
-    startY: 50,
+    startY: 58,
     body: [
-      ['Doctor Name',                submission.doctorName],
-      ['Doctor Phone',               submission.doctorPhone || '—'],
-      ['City / State',               [submission.doctorCity, submission.doctorState].filter(Boolean).join(', ') || '—'],
-      ['Clinic Name',                submission.clinicName],
-      ['No. of Staff',               submission.noOfStaff || '—'],
-      ['Frontdesk / Receptionist',   submission.frontdeskNumber || '—'],
-      ['Onboarding Date',            submission.onboardingDate ? formatDate(submission.onboardingDate) : '—'],
-      ['Training Date',              formatDate(submission.trainingDate)],
-      ['BDM Name',                   submission.bdmName],
-      ['AM Name',                    submission.amName || '—'],
-      ['Support Team Member',        submission.supportMember],
+      ['Doctor Name',               submission.doctorName],
+      ['Doctor Phone',              submission.doctorPhone || '—'],
+      ['City / State',              [submission.doctorCity, submission.doctorState].filter(Boolean).join(', ') || '—'],
+      ['Clinic Name',               submission.clinicName],
+      ['No. of Staff',              submission.noOfStaff || '—'],
+      ['Frontdesk / Receptionist',  submission.frontdeskNumber || '—'],
+      ['Onboarding Date',           submission.onboardingDate ? formatDate(submission.onboardingDate) : '—'],
+      ['Training Date',             formatDate(submission.trainingDate)],
+      ['BDM Name',                  submission.bdmName],
+      ['AM Name',                   submission.amName || '—'],
+      ['Support Team Member',       submission.supportMember],
     ],
     theme: 'plain',
-    styles: { fontSize: 10, cellPadding: 3 },
+    styles: { fontSize: 10, cellPadding: 2.5 },
     columnStyles: {
       0: { fontStyle: 'bold', cellWidth: 60, textColor: [71, 85, 105] },
       1: { textColor: [15, 23, 42] },
@@ -73,64 +78,103 @@ export const generateChecklistReport = (submission) => {
     margin: { left: 14, right: 14 },
   })
 
-  // Section: Module Checklist
-  const detailsEnd = doc.lastAutoTable.finalY + 10
+  // Section: Module Status (Yes & No only)
+  const detailsEnd = doc.lastAutoTable.finalY + 8
 
   doc.setTextColor(112, 59, 150)
   doc.setFontSize(12)
   doc.setFont('helvetica', 'bold')
   doc.text('Module Training Status', 14, detailsEnd)
-
   doc.setDrawColor(112, 59, 150)
   doc.setLineWidth(0.5)
   doc.line(14, detailsEnd + 2, W - 14, detailsEnd + 2)
 
-  const checklistRows = Object.entries(submission.checklist).map(
-    ([module, status]) => [module, status]
-  )
+  // Filter out NA
+  const checklistRows = Object.entries(submission.checklist)
+    .filter(([, status]) => status !== 'NA')
+    .map(([module, status]) => [module, status])
 
-  autoTable(doc, {
-    startY: detailsEnd + 6,
-    head: [['Module', 'Status']],
-    body: checklistRows,
-    theme: 'striped',
-    headStyles: {
-      fillColor: [67, 45, 133],
-      textColor: [255, 255, 255],
-      fontStyle: 'bold',
-      fontSize: 10,
-    },
-    bodyStyles: { fontSize: 10 },
-    columnStyles: {
-      0: { cellWidth: 140 },
-      1: { cellWidth: 30, halign: 'center' },
-    },
-    didParseCell(data) {
-      if (data.section === 'body' && data.column.index === 1) {
-        const v = data.cell.text[0]
-        if (v === 'Yes') {
-          data.cell.styles.textColor = [21, 128, 61]
-          data.cell.styles.fontStyle = 'bold'
-        } else if (v === 'No') {
-          data.cell.styles.textColor = [185, 28, 28]
-          data.cell.styles.fontStyle = 'bold'
-        } else {
-          data.cell.styles.textColor = [100, 116, 139]
+  if (checklistRows.length === 0) {
+    doc.setFontSize(10)
+    doc.setTextColor(148, 163, 184)
+    doc.text('No modules marked as Yes or No.', 14, detailsEnd + 12)
+  } else {
+    autoTable(doc, {
+      startY: detailsEnd + 6,
+      head: [['Module', 'Status']],
+      body: checklistRows,
+      theme: 'striped',
+      headStyles: { fillColor: [67, 45, 133], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 10 },
+      bodyStyles: { fontSize: 10 },
+      columnStyles: {
+        0: { cellWidth: 140 },
+        1: { cellWidth: 30, halign: 'center' },
+      },
+      didParseCell(data) {
+        if (data.section === 'body' && data.column.index === 1) {
+          const v = data.cell.text[0]
+          if (v === 'Yes') { data.cell.styles.textColor = [21, 128, 61]; data.cell.styles.fontStyle = 'bold' }
+          else if (v === 'No') { data.cell.styles.textColor = [185, 28, 28]; data.cell.styles.fontStyle = 'bold' }
         }
-      }
-    },
-    margin: { left: 14, right: 14 },
-  })
+      },
+      margin: { left: 14, right: 14 },
+    })
+  }
+
+  let nextY = checklistRows.length === 0
+    ? detailsEnd + 20
+    : doc.lastAutoTable.finalY + 8
+
+  // Comments section
+  const hasComments = submission.additionalComments || submission.handoverComment
+  if (hasComments) {
+    // check if we need new page
+    if (nextY > 250) { doc.addPage(); nextY = 20 }
+
+    doc.setTextColor(112, 59, 150)
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Comments', 14, nextY)
+    doc.setDrawColor(112, 59, 150)
+    doc.setLineWidth(0.5)
+    doc.line(14, nextY + 2, W - 14, nextY + 2)
+    nextY += 8
+
+    if (submission.handoverComment) {
+      const stampColor = submission.handoverStatus === 'approved' ? [21, 128, 61] : submission.handoverStatus === 'rejected' ? [185, 28, 28] : [107, 114, 128]
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(...stampColor)
+      const label = submission.handoverStatus === 'approved' ? 'Approval Comment' : submission.handoverStatus === 'rejected' ? 'Rejection Reason' : 'Decision Comment'
+      doc.text(`${label}:`, 14, nextY)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(30, 30, 30)
+      const lines = doc.splitTextToSize(submission.handoverComment, W - 28)
+      doc.text(lines, 14, nextY + 6)
+      nextY += 6 + lines.length * 6 + 6
+    }
+
+    if (submission.additionalComments) {
+      if (nextY > 260) { doc.addPage(); nextY = 20 }
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(71, 85, 105)
+      doc.text('Additional Comments:', 14, nextY)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(30, 30, 30)
+      const lines = doc.splitTextToSize(submission.additionalComments, W - 28)
+      doc.text(lines, 14, nextY + 6)
+      nextY += 6 + lines.length * 6 + 6
+    }
+  }
 
   // Signature area
-  const sigY = doc.lastAutoTable.finalY + 18
-
-  if (sigY < 265) {
+  const sigY = nextY + 10
+  if (sigY < 270) {
     doc.setDrawColor(148, 163, 184)
     doc.setLineWidth(0.4)
     doc.line(20, sigY, 85, sigY)
     doc.line(125, sigY, 190, sigY)
-
     doc.setFontSize(9)
     doc.setTextColor(71, 85, 105)
     doc.setFont('helvetica', 'normal')
@@ -149,21 +193,16 @@ export const generateCertificate = (submission) => {
   const W = 297
   const H = 210
 
-  // Cream background
   doc.setFillColor(254, 252, 243)
   doc.rect(0, 0, W, H, 'F')
 
-  // Outer border
   doc.setDrawColor(112, 59, 150)
   doc.setLineWidth(3)
   doc.rect(8, 8, W - 16, H - 16)
-
-  // Inner border
   doc.setLineWidth(0.8)
   doc.setDrawColor(184, 127, 220)
   doc.rect(12, 12, W - 24, H - 24)
 
-  // Blue header bar
   doc.setFillColor(67, 45, 133)
   doc.rect(8, 8, W - 16, 30, 'F')
 
@@ -175,54 +214,42 @@ export const generateCertificate = (submission) => {
   doc.setFont('helvetica', 'normal')
   doc.text('Healthcare Technology Solutions', W / 2, 27, { align: 'center' })
 
-  // Certificate title
   doc.setTextColor(112, 59, 150)
   doc.setFontSize(22)
   doc.setFont('helvetica', 'bold')
   doc.text('CERTIFICATE OF TRAINING COMPLETION', W / 2, 56, { align: 'center' })
 
-  // Gold divider line
   doc.setDrawColor(202, 138, 4)
   doc.setLineWidth(1.2)
   doc.line(W / 2 - 90, 61, W / 2 + 90, 61)
 
-  // Certify text
   doc.setTextColor(71, 85, 105)
   doc.setFontSize(11)
   doc.setFont('helvetica', 'normal')
   doc.text('This is to certify that', W / 2, 74, { align: 'center' })
 
-  // Doctor name
   doc.setTextColor(112, 59, 150)
   doc.setFontSize(24)
   doc.setFont('helvetica', 'bold')
   const doctorLabel = submission.doctorName.toLowerCase().startsWith('dr')
-    ? submission.doctorName
-    : `Dr. ${submission.doctorName}`
+    ? submission.doctorName : `Dr. ${submission.doctorName}`
   doc.text(doctorLabel, W / 2, 87, { align: 'center' })
 
-  // Underline
   doc.setDrawColor(112, 59, 150)
   doc.setLineWidth(0.5)
   const nameW = (doc.getStringUnitWidth(doctorLabel) * 24) / doc.internal.scaleFactor
   doc.line(W / 2 - nameW / 2, 90, W / 2 + nameW / 2, 90)
 
-  // Clinic & description
   doc.setTextColor(71, 85, 105)
   doc.setFontSize(11)
   doc.setFont('helvetica', 'normal')
   const location = [submission.doctorCity, submission.doctorState].filter(Boolean).join(', ')
   const clinicLine = location ? `${submission.clinicName}, ${location}` : submission.clinicName
   doc.text(`of  ${clinicLine}`, W / 2, 100, { align: 'center' })
-  doc.text(
-    'has successfully completed training on the following TatvaCare modules:',
-    W / 2, 110, { align: 'center' }
-  )
+  doc.text('has successfully completed training on the following TatvaCare modules:', W / 2, 110, { align: 'center' })
 
-  // YES modules grid
   const yesModules = Object.entries(submission.checklist)
-    .filter(([, v]) => v === 'Yes')
-    .map(([k]) => k)
+    .filter(([, v]) => v === 'Yes').map(([k]) => k)
 
   if (yesModules.length === 0) {
     doc.setFontSize(10)
@@ -231,37 +258,25 @@ export const generateCertificate = (submission) => {
   } else {
     const cols = Math.min(yesModules.length, 4)
     const colW = (W - 80) / cols
-    const startX = 40
-    const startY = 122
-
     doc.setFontSize(10)
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(21, 128, 61)
-
     yesModules.forEach((mod, i) => {
-      const col = i % cols
-      const row = Math.floor(i / cols)
-      const cx = startX + col * colW + colW / 2
-      const cy = startY + row * 10
+      const cx = 40 + (i % cols) * colW + colW / 2
+      const cy = 122 + Math.floor(i / cols) * 10
       doc.text(`\u2713  ${mod}`, cx, cy, { align: 'center' })
     })
   }
 
-  // Training date
   const moduleRows = yesModules.length === 0 ? 1 : Math.ceil(yesModules.length / 4)
   const dateY = 122 + moduleRows * 10 + 6
 
   doc.setTextColor(71, 85, 105)
   doc.setFontSize(10)
   doc.setFont('helvetica', 'normal')
-  doc.text(
-    `Training Completed on:  ${formatDate(submission.trainingDate)}`,
-    W / 2, dateY, { align: 'center' }
-  )
+  doc.text(`Training Completed on:  ${formatDate(submission.trainingDate)}`, W / 2, dateY, { align: 'center' })
 
-  // Signature lines
   const sigY = H - 28
-
   doc.setDrawColor(148, 163, 184)
   doc.setLineWidth(0.4)
   doc.line(28, sigY, 95, sigY)
@@ -271,13 +286,10 @@ export const generateCertificate = (submission) => {
   doc.setFontSize(9)
   doc.setTextColor(71, 85, 105)
   doc.setFont('helvetica', 'normal')
-
-  doc.text(submission.bdmName,       61.5,     sigY + 5, { align: 'center' })
+  doc.text(submission.bdmName,       61.5,  sigY + 5, { align: 'center' })
   doc.text('Business Development Manager', 61.5, sigY + 10, { align: 'center' })
-
   doc.text(submission.supportMember, W / 2, sigY + 5,  { align: 'center' })
   doc.text('Support Team',           W / 2, sigY + 10, { align: 'center' })
-
   doc.text('Authorised Signatory',   W - 61.5, sigY + 5,  { align: 'center' })
   doc.text('TatvaCare',              W - 61.5, sigY + 10, { align: 'center' })
 
