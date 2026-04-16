@@ -276,22 +276,65 @@ export const generateCertificate = (submission) => {
   doc.setFont('helvetica', 'normal')
   doc.text(`Training Completed on:  ${formatDate(submission.trainingDate)}`, W / 2, dateY, { align: 'center' })
 
-  const sigY = H - 28
+  // Acknowledgment text
+  const ackY = 122 + moduleRows * 10 + 18
+
+  doc.setFillColor(245, 238, 250)
+  doc.roundedRect(20, ackY - 5, W - 40, 16, 2, 2, 'F')
+  doc.setFontSize(9.5)
+  doc.setFont('helvetica', 'italic')
+  doc.setTextColor(67, 45, 133)
+  const doctorLabel2 = submission.doctorName.toLowerCase().startsWith('dr')
+    ? submission.doctorName : `Dr. ${submission.doctorName}`
+  doc.text(
+    `"I, ${doctorLabel2}, acknowledge that I have received the training from ${submission.bdmName} on ${formatDate(submission.trainingDate)}."`,
+    W / 2, ackY + 4, { align: 'center', maxWidth: W - 50 }
+  )
+
+  // Signatures
+  const sigY = H - 32
+
   doc.setDrawColor(148, 163, 184)
   doc.setLineWidth(0.4)
-  doc.line(28, sigY, 95, sigY)
-  doc.line(W / 2 - 34, sigY, W / 2 + 34, sigY)
-  doc.line(W - 95, sigY, W - 28, sigY)
+
+  // Doctor signature
+  doc.line(20, sigY, 78, sigY)
+  // BDM signature
+  doc.line(W / 2 - 30, sigY, W / 2 + 30, sigY)
+  // Support signature
+  doc.line(W - 78, sigY, W - 20, sigY)
 
   doc.setFontSize(9)
-  doc.setTextColor(71, 85, 105)
   doc.setFont('helvetica', 'normal')
-  doc.text(submission.bdmName,       61.5,  sigY + 5, { align: 'center' })
-  doc.text('Business Development Manager', 61.5, sigY + 10, { align: 'center' })
-  doc.text(submission.supportMember, W / 2, sigY + 5,  { align: 'center' })
-  doc.text('Support Team',           W / 2, sigY + 10, { align: 'center' })
-  doc.text('Authorised Signatory',   W - 61.5, sigY + 5,  { align: 'center' })
-  doc.text('TatvaCare',              W - 61.5, sigY + 10, { align: 'center' })
+  doc.setTextColor(71, 85, 105)
+
+  const docName2 = submission.doctorName.toLowerCase().startsWith('dr')
+    ? submission.doctorName : `Dr. ${submission.doctorName}`
+  doc.text(docName2,             49,  sigY + 5, { align: 'center' })
+  doc.text('Doctor / Recipient', 49,  sigY + 10, { align: 'center' })
+
+  doc.text(submission.bdmName,   W / 2, sigY + 5,  { align: 'center' })
+  doc.text('BDM / Trainer',      W / 2, sigY + 10, { align: 'center' })
+
+  doc.text(submission.supportMember, W - 49, sigY + 5,  { align: 'center' })
+  doc.text('Support Team',           W - 49, sigY + 10, { align: 'center' })
+
+  // TatvaCare stamp (bottom right corner)
+  const stX = W - 26
+  const stY = H - 26
+  const stR = 16
+  doc.setDrawColor(67, 45, 133)
+  doc.setLineWidth(1.5)
+  doc.circle(stX, stY, stR)
+  doc.setLineWidth(0.5)
+  doc.circle(stX, stY, stR - 2.5)
+
+  doc.setFontSize(6)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(67, 45, 133)
+  doc.text('TATVACARE',   stX, stY - 5,  { align: 'center' })
+  doc.text('HEALTHCARE',  stX, stY,      { align: 'center' })
+  doc.text('TECHNOLOGY',  stX, stY + 5,  { align: 'center' })
 
   return doc
 }

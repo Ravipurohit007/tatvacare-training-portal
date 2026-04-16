@@ -69,43 +69,55 @@ export default function Checklist() {
 
   const yesCount = Object.values(checklist).filter((v) => v === 'Yes').length
 
-  const handleSubmit = async (status) => {
-    if (!isFormValid || !status) return
+  const handleSubmit = async (decisionStatus) => {
+    if (!isFormValid || !decisionStatus) return
     setSubmitStatus('submitting')
     setError('')
 
-    try {
-      const submission = {
-        ...form,
-        checklist,
-        additionalComments,
-        handoverStatus: status,
-        handoverComment,
-        submittedAt: new Date().toISOString(),
-      }
+    const submission = {
+      ...form,
+      checklist,
+      additionalComments,
+      handoverStatus: decisionStatus,
+      handoverComment,
+      submittedAt: new Date().toISOString(),
+    }
 
+    // Step 1: Generate PDFs first (synchronous, no network dependency)
+    try {
+      const checklistDoc = generateChecklistReport(submission)
+      const certDoc = generateCertificate(submission)
+      setPdfUrls({
+        checklist: URL.createObjectURL(checklistDoc.output('blob')),
+        cert: URL.createObjectURL(certDoc.output('blob')),
+      })
+    } catch (pdfErr) {
+      console.error('PDF error:', pdfErr)
+      setError('Failed to generate PDFs. Please try again.')
+      setSubmitStatus('error')
+      return
+    }
+
+    // Step 2: Save to backend (don't block success screen on this)
+    try {
       if (isFirebaseConfigured && db) {
-        await addDoc(collection(db, 'submissions'), submission)
+        await Promise.race([
+          addDoc(collection(db, 'submissions'), submission),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
+        ])
       } else {
         const existing = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
         existing.unshift({ ...submission, id: Date.now().toString() })
         localStorage.setItem('tc_submissions', JSON.stringify(existing))
       }
-
-      const checklistDoc = generateChecklistReport(submission)
-      const certDoc = generateCertificate(submission)
-
-      setPdfUrls({
-        checklist: URL.createObjectURL(checklistDoc.output('blob')),
-        cert: URL.createObjectURL(certDoc.output('blob')),
-      })
-      setHandoverStatus(status)
-      setSubmitStatus('success')
-    } catch (err) {
-      console.error('Submission error:', err)
-      setError('Something went wrong. Please try again.')
-      setSubmitStatus('error')
+    } catch (saveErr) {
+      console.error('Save error:', saveErr)
+      // PDFs are already generated — show success but warn about save failure
+      setError('PDFs generated but could not save to database. Please screenshot or download PDFs now.')
     }
+
+    setHandoverStatus(decisionStatus)
+    setSubmitStatus('success')
   }
 
   const handleReset = () => {
