@@ -3,6 +3,8 @@ export const CHECKLIST_ITEMS = [
   'Billing',
   'IPD',
   'Pharmacy',
+  'Anydesk Installed',
+  'Shortcut Created for Software Link',
   'SmartSync',
   'SmartSync Pen',
   'CVT',
@@ -17,8 +19,6 @@ export const CHECKLIST_ITEMS = [
   'TABRx',
   'TABRx + CVT',
   'TatvaAI',
-  'Anydesk Installed',
-  'Shortcut Created for Software Link',
 ]
 
 export const STATUS_OPTIONS = ['Yes', 'No', 'NA']

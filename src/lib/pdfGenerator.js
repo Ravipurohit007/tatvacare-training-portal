@@ -19,7 +19,7 @@ export const generateChecklistReport = (submission) => {
   const W = 210
 
   // Header bar
-  doc.setFillColor(30, 64, 175)
+  doc.setFillColor(67, 45, 133)
   doc.rect(0, 0, W, 32, 'F')
 
   doc.setTextColor(255, 255, 255)
@@ -40,12 +40,12 @@ export const generateChecklistReport = (submission) => {
   doc.text(`Generated: ${new Date().toLocaleDateString('en-IN')}`, W - 14, 26, { align: 'right' })
 
   // Section: Training Details
-  doc.setTextColor(30, 64, 175)
+  doc.setTextColor(112, 59, 150)
   doc.setFontSize(12)
   doc.setFont('helvetica', 'bold')
   doc.text('Training Details', 14, 44)
 
-  doc.setDrawColor(30, 64, 175)
+  doc.setDrawColor(112, 59, 150)
   doc.setLineWidth(0.5)
   doc.line(14, 46, W - 14, 46)
 
@@ -58,6 +58,7 @@ export const generateChecklistReport = (submission) => {
       ['Clinic Name',                submission.clinicName],
       ['No. of Staff',               submission.noOfStaff || '—'],
       ['Frontdesk / Receptionist',   submission.frontdeskNumber || '—'],
+      ['Onboarding Date',            submission.onboardingDate ? formatDate(submission.onboardingDate) : '—'],
       ['Training Date',              formatDate(submission.trainingDate)],
       ['BDM Name',                   submission.bdmName],
       ['AM Name',                    submission.amName || '—'],
@@ -75,12 +76,12 @@ export const generateChecklistReport = (submission) => {
   // Section: Module Checklist
   const detailsEnd = doc.lastAutoTable.finalY + 10
 
-  doc.setTextColor(30, 64, 175)
+  doc.setTextColor(112, 59, 150)
   doc.setFontSize(12)
   doc.setFont('helvetica', 'bold')
   doc.text('Module Training Status', 14, detailsEnd)
 
-  doc.setDrawColor(30, 64, 175)
+  doc.setDrawColor(112, 59, 150)
   doc.setLineWidth(0.5)
   doc.line(14, detailsEnd + 2, W - 14, detailsEnd + 2)
 
@@ -94,7 +95,7 @@ export const generateChecklistReport = (submission) => {
     body: checklistRows,
     theme: 'striped',
     headStyles: {
-      fillColor: [30, 64, 175],
+      fillColor: [67, 45, 133],
       textColor: [255, 255, 255],
       fontStyle: 'bold',
       fontSize: 10,
@@ -153,17 +154,17 @@ export const generateCertificate = (submission) => {
   doc.rect(0, 0, W, H, 'F')
 
   // Outer border
-  doc.setDrawColor(30, 64, 175)
+  doc.setDrawColor(112, 59, 150)
   doc.setLineWidth(3)
   doc.rect(8, 8, W - 16, H - 16)
 
   // Inner border
   doc.setLineWidth(0.8)
-  doc.setDrawColor(96, 165, 250)
+  doc.setDrawColor(184, 127, 220)
   doc.rect(12, 12, W - 24, H - 24)
 
   // Blue header bar
-  doc.setFillColor(30, 64, 175)
+  doc.setFillColor(67, 45, 133)
   doc.rect(8, 8, W - 16, 30, 'F')
 
   doc.setTextColor(255, 255, 255)
@@ -175,7 +176,7 @@ export const generateCertificate = (submission) => {
   doc.text('Healthcare Technology Solutions', W / 2, 27, { align: 'center' })
 
   // Certificate title
-  doc.setTextColor(30, 64, 175)
+  doc.setTextColor(112, 59, 150)
   doc.setFontSize(22)
   doc.setFont('helvetica', 'bold')
   doc.text('CERTIFICATE OF TRAINING COMPLETION', W / 2, 56, { align: 'center' })
@@ -192,7 +193,7 @@ export const generateCertificate = (submission) => {
   doc.text('This is to certify that', W / 2, 74, { align: 'center' })
 
   // Doctor name
-  doc.setTextColor(30, 64, 175)
+  doc.setTextColor(112, 59, 150)
   doc.setFontSize(24)
   doc.setFont('helvetica', 'bold')
   const doctorLabel = submission.doctorName.toLowerCase().startsWith('dr')
@@ -201,7 +202,7 @@ export const generateCertificate = (submission) => {
   doc.text(doctorLabel, W / 2, 87, { align: 'center' })
 
   // Underline
-  doc.setDrawColor(30, 64, 175)
+  doc.setDrawColor(112, 59, 150)
   doc.setLineWidth(0.5)
   const nameW = (doc.getStringUnitWidth(doctorLabel) * 24) / doc.internal.scaleFactor
   doc.line(W / 2 - nameW / 2, 90, W / 2 + nameW / 2, 90)

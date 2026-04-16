@@ -10,29 +10,27 @@ export default function Home() {
     if (SOP_URL) {
       window.open(SOP_URL, '_blank', 'noopener,noreferrer')
     } else {
-      alert(
-        'SOP URL not configured.\n\nAdd VITE_SOP_URL to your .env file to link your SOP document.'
-      )
+      alert('SOP URL not configured.\n\nAdd VITE_SOP_URL to your .env file to link your SOP document.')
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-100">
+    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #f5eefa 0%, #f8f4ff 50%, #eef2ff 100%)' }}>
       {/* Navbar */}
-      <nav className="bg-blue-800 shadow-md">
+      <nav style={{ background: 'linear-gradient(90deg, #432d85 0%, #703b96 100%)' }} className="shadow-md">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center">
-              <span className="text-blue-800 font-black text-lg leading-none">T</span>
+            <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center shadow-sm">
+              <span className="font-black text-lg leading-none" style={{ color: '#703b96' }}>T</span>
             </div>
             <div>
               <p className="text-white font-bold text-lg leading-none">TatvaCare</p>
-              <p className="text-blue-200 text-xs">Healthcare Technology</p>
+              <p className="text-purple-200 text-xs">Healthcare Technology</p>
             </div>
           </div>
           <button
             onClick={() => navigate('/admin')}
-            className="text-blue-200 hover:text-white text-sm flex items-center gap-1 transition-colors"
+            className="text-purple-200 hover:text-white text-sm flex items-center gap-1 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -53,7 +51,6 @@ export default function Home() {
             </svg>
             <p className="text-amber-700 text-sm">
               <strong>Demo Mode</strong> — Firebase not configured. Data is saved locally in the browser.
-              Copy <code className="bg-amber-100 px-1 rounded">.env.example</code> to <code className="bg-amber-100 px-1 rounded">.env</code> and add your Firebase credentials.
             </p>
           </div>
         </div>
@@ -61,7 +58,7 @@ export default function Home() {
 
       {/* Hero */}
       <div className="max-w-5xl mx-auto px-6 pt-16 pb-8 text-center">
-        <h1 className="text-4xl font-bold text-slate-800 mb-3">
+        <h1 className="text-4xl font-bold mb-3" style={{ color: '#432d85' }}>
           Training &amp; Handover Portal
         </h1>
         <p className="text-slate-500 text-lg max-w-xl mx-auto">
@@ -76,10 +73,13 @@ export default function Home() {
           {/* SOP Card */}
           <button
             onClick={handleSOP}
-            className="card p-8 text-left hover:shadow-md hover:border-blue-200 transition-all group"
+            className="card p-8 text-left hover:shadow-md transition-all group"
+            style={{ borderColor: '#e9d8f5' }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = '#b87fdc'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = '#e9d8f5'}
           >
-            <div className="w-14 h-14 bg-blue-50 rounded-xl flex items-center justify-center mb-5 group-hover:bg-blue-100 transition-colors">
-              <svg className="w-7 h-7 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-5 transition-colors" style={{ background: '#f5eefa' }}>
+              <svg className="w-7 h-7" style={{ color: '#703b96' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
@@ -88,7 +88,7 @@ export default function Home() {
             <p className="text-slate-500 text-sm leading-relaxed mb-5">
               Standard Operating Procedure for training and onboarding. Reference this document before conducting any clinic training session.
             </p>
-            <span className="inline-flex items-center gap-1.5 text-blue-700 font-semibold text-sm group-hover:gap-2.5 transition-all">
+            <span className="inline-flex items-center gap-1.5 font-semibold text-sm group-hover:gap-2.5 transition-all" style={{ color: '#703b96' }}>
               Open Document
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -99,16 +99,17 @@ export default function Home() {
           {/* Checklist Card */}
           <button
             onClick={() => navigate('/checklist')}
-            className="card p-8 text-left hover:shadow-md hover:border-blue-200 transition-all group bg-blue-800 border-blue-800"
+            className="card p-8 text-left hover:shadow-md transition-all group"
+            style={{ background: 'linear-gradient(135deg, #432d85 0%, #703b96 100%)', borderColor: '#703b96' }}
           >
-            <div className="w-14 h-14 bg-blue-700 rounded-xl flex items-center justify-center mb-5 group-hover:bg-blue-600 transition-colors">
+            <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-5 transition-colors" style={{ background: 'rgba(255,255,255,0.15)' }}>
               <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
               </svg>
             </div>
             <h2 className="text-xl font-bold text-white mb-2">Training Completion Checklist</h2>
-            <p className="text-blue-200 text-sm leading-relaxed mb-5">
+            <p className="text-purple-200 text-sm leading-relaxed mb-5">
               Record completed training modules, generate a detailed checklist report, and issue a training certificate for the doctor.
             </p>
             <span className="inline-flex items-center gap-1.5 text-white font-semibold text-sm group-hover:gap-2.5 transition-all">
@@ -124,15 +125,15 @@ export default function Home() {
         <div className="mt-10 card p-5">
           <div className="grid grid-cols-3 divide-x divide-slate-100">
             <div className="text-center px-4">
-              <p className="text-2xl font-bold text-blue-800">18</p>
+              <p className="text-2xl font-bold" style={{ color: '#703b96' }}>20</p>
               <p className="text-slate-500 text-xs mt-0.5">Modules Covered</p>
             </div>
             <div className="text-center px-4">
-              <p className="text-2xl font-bold text-blue-800">2</p>
+              <p className="text-2xl font-bold" style={{ color: '#703b96' }}>2</p>
               <p className="text-slate-500 text-xs mt-0.5">PDFs Generated</p>
             </div>
             <div className="text-center px-4">
-              <p className="text-2xl font-bold text-blue-800">1</p>
+              <p className="text-2xl font-bold" style={{ color: '#703b96' }}>1</p>
               <p className="text-slate-500 text-xs mt-0.5">Click Submission</p>
             </div>
           </div>

@@ -52,10 +52,10 @@ function LoginScreen({ onLogin }) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-100 flex items-center justify-center p-6">
+    <div className="min-h-screen flex items-center justify-center p-6" style={{ background: 'linear-gradient(135deg, #f5eefa 0%, #f8f4ff 50%, #eef2ff 100%)' }}>
       <div className="card max-w-sm w-full p-8">
-        <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-5">
-          <svg className="w-6 h-6 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-5" style={{ background: '#f5eefa' }}>
+          <svg className="w-6 h-6" style={{ color: '#703b96' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
               d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
@@ -105,6 +105,7 @@ function DetailModal({ submission, onClose }) {
           {/* Details */}
           <div className="grid grid-cols-2 gap-3 text-sm">
             {[
+              ['Onboarding Date',      submission.onboardingDate ? formatDate(submission.onboardingDate) : '—'],
               ['Training Date',        formatDate(submission.trainingDate)],
               ['Submitted At',         formatDateTime(submission.submittedAt)],
               ['Doctor Phone',         submission.doctorPhone || '—'],
@@ -204,9 +205,9 @@ export default function Admin() {
   )
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-100">
+    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #f5eefa 0%, #f8f4ff 50%, #eef2ff 100%)' }}>
       {/* Header */}
-      <div className="bg-blue-800 shadow">
+      <div className="shadow" style={{ background: 'linear-gradient(90deg, #432d85 0%, #703b96 100%)' }}>
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button

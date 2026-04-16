@@ -16,6 +16,7 @@ const initialForm = {
   clinicName: '',
   noOfStaff: '',
   frontdeskNumber: '',
+  onboardingDate: '',
   trainingDate: '',
   bdmName: '',
   amName: '',
@@ -119,7 +120,7 @@ export default function Checklist() {
   // ── Success Screen ──────────────────────────────────────────────────────────
   if (status === 'success') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-100 flex items-center justify-center p-6">
+      <div className="min-h-screen flex items-center justify-center p-6" style={{ background: 'linear-gradient(135deg, #f5eefa 0%, #f8f4ff 50%, #eef2ff 100%)' }}>
         <div className="card max-w-md w-full p-8 text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5">
             <svg className="w-9 h-9 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -139,21 +140,21 @@ export default function Checklist() {
             <a
               href={pdfUrls.checklist}
               download={`Training_Checklist_${form.doctorName.replace(/\s+/g, '_')}.pdf`}
-              className="flex items-center justify-between w-full bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg px-4 py-3 transition-colors"
+              className="flex items-center justify-between w-full rounded-lg px-4 py-3 transition-colors" style={{ background: '#f5eefa', border: '1px solid #d3b2eb' }} onMouseEnter={e=>e.currentTarget.style.background='#e9d8f5'} onMouseLeave={e=>e.currentTarget.style.background='#f5eefa'}
             >
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#e9d8f5' }}>
                   <svg className="w-4 h-4 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                       d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
                 <div className="text-left">
-                  <p className="text-sm font-semibold text-blue-800">Training Checklist Report</p>
-                  <p className="text-xs text-blue-500">Full details with Yes / No / NA</p>
+                  <p className="text-sm font-semibold" style={{ color: '#432d85' }}>Training Checklist Report</p>
+                  <p className="text-xs" style={{ color: '#9e54cc' }}>Full details with Yes / No / NA</p>
                 </div>
               </div>
-              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" style={{ color: '#703b96' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
@@ -198,13 +199,13 @@ export default function Checklist() {
 
   // ── Checklist Form ──────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-100">
+    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #f5eefa 0%, #f8f4ff 50%, #eef2ff 100%)' }}>
       {/* Header */}
-      <div className="bg-blue-800 shadow">
+      <div className="shadow" style={{ background: 'linear-gradient(90deg, #432d85 0%, #703b96 100%)' }}>
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center gap-4">
           <button
             onClick={() => navigate('/')}
-            className="text-blue-200 hover:text-white transition-colors"
+            className="text-purple-200 hover:text-white transition-colors"
             title="Back to Home"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -223,7 +224,7 @@ export default function Checklist() {
         {/* Training Details */}
         <div className="card p-6">
           <h2 className="text-base font-bold text-slate-800 mb-5 flex items-center gap-2">
-            <span className="w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-xs font-bold">1</span>
+            <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: '#703b96' }}>1</span>
             Training Details
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -305,6 +306,15 @@ export default function Checklist() {
               />
             </div>
             <div>
+              <label className="form-label">Onboarding Date</label>
+              <input
+                type="date"
+                className="form-input"
+                value={form.onboardingDate}
+                onChange={(e) => setForm({ ...form, onboardingDate: e.target.value })}
+              />
+            </div>
+            <div>
               <label className="form-label">Training Completion Date <span className="text-red-500">*</span></label>
               <input
                 type="date"
@@ -359,7 +369,7 @@ export default function Checklist() {
         <div className="card p-6">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
-              <span className="w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-xs font-bold">2</span>
+              <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: '#703b96' }}>2</span>
               Module Training Status
             </h2>
             <div className="flex items-center gap-3 text-xs">
