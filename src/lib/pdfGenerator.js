@@ -9,6 +9,9 @@ const formatDate = (dateString) => {
   } catch { return dateString || '' }
 }
 
+const doctorLabel = (name) =>
+  name.toLowerCase().startsWith('dr') ? name : `Dr. ${name}`
+
 // ─── Training Checklist Report (A4 Portrait) ─────────────────────────────────
 export const generateChecklistReport = (submission) => {
   const doc = new jsPDF('portrait', 'mm', 'a4')
@@ -157,21 +160,82 @@ export const generateChecklistReport = (submission) => {
     }
   }
 
-  // Signature lines
-  const sigY = nextY + 10
-  if (sigY < 270) {
-    doc.setDrawColor(148, 163, 184)
-    doc.setLineWidth(0.4)
-    doc.line(20, sigY, 85, sigY)
-    doc.line(125, sigY, 190, sigY)
-    doc.setFontSize(9)
-    doc.setTextColor(71, 85, 105)
-    doc.setFont('helvetica', 'normal')
-    doc.text(submission.bdmName,       52,  sigY + 5,  { align: 'center' })
-    doc.text('BDM',                    52,  sigY + 10, { align: 'center' })
-    doc.text(submission.supportMember, 157, sigY + 5,  { align: 'center' })
-    doc.text('Support Team',           157, sigY + 10, { align: 'center' })
-  }
+  // ── Doctor's Acknowledgment ───────────────────────────────────────────────
+  if (nextY > 220) { doc.addPage(); nextY = 20 }
+
+  const ackY = nextY + 6
+  const ackBoxH = 36
+
+  doc.setFillColor(245, 238, 250)
+  doc.setDrawColor(184, 127, 220)
+  doc.setLineWidth(0.4)
+  doc.roundedRect(14, ackY, W - 28, ackBoxH, 2, 2, 'FD')
+
+  doc.setTextColor(112, 59, 150)
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'bold')
+  doc.text("Doctor's Acknowledgment", 20, ackY + 7)
+
+  const drLabel = doctorLabel(submission.doctorName)
+  const ackText =
+    `I, ${drLabel}, hereby confirm that I have completed the training on TatvaPractice EMR software. ` +
+    `I have received training on all the modules listed above (checked as "Yes") and have understood the ` +
+    `functionalities of the software. I acknowledge that I can request further assistance or support if required.`
+
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(30, 20, 60)
+  const ackLines = doc.splitTextToSize(ackText, W - 36)
+  doc.text(ackLines, 20, ackY + 14)
+
+  // Signature + Date inside box
+  const sigInBoxY = ackY + ackBoxH - 6
+  doc.setFontSize(8)
+  doc.setTextColor(30, 20, 60)
+  doc.setFont('helvetica', 'normal')
+  doc.text('\u2022  Doctor\'s Signature:', 20, sigInBoxY)
+  doc.setDrawColor(100, 100, 100)
+  doc.setLineWidth(0.3)
+  doc.line(66, sigInBoxY, 118, sigInBoxY)
+
+  doc.text('\u2022  Date:', 122, sigInBoxY)
+  doc.line(134, sigInBoxY, W - 15, sigInBoxY)
+
+  // ── Bottom Signatures + Stamp ─────────────────────────────────────────────
+  const bottomSigY = ackY + ackBoxH + 12
+
+  doc.setDrawColor(148, 163, 184)
+  doc.setLineWidth(0.4)
+  doc.line(20, bottomSigY, 85, bottomSigY)
+  doc.line(125, bottomSigY, 190, bottomSigY)
+
+  doc.setFontSize(9)
+  doc.setTextColor(71, 85, 105)
+  doc.setFont('helvetica', 'normal')
+  doc.text(submission.bdmName,       52,  bottomSigY + 5,  { align: 'center' })
+  doc.text('BDM',                    52,  bottomSigY + 10, { align: 'center' })
+  doc.text(submission.supportMember, 157, bottomSigY + 5,  { align: 'center' })
+  doc.text('Support Team',           157, bottomSigY + 10, { align: 'center' })
+
+  // TatvaCare stamp (bottom right)
+  const stX = W - 18
+  const stY = bottomSigY + 4
+  const stR = 11
+
+  doc.setFillColor(255, 255, 255)
+  doc.setDrawColor(67, 45, 133)
+  doc.setLineWidth(1.5)
+  doc.circle(stX, stY, stR, 'FD')
+  doc.setLineWidth(0.5)
+  doc.circle(stX, stY, stR - 2, 'S')
+
+  doc.setFontSize(4.5)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(67, 45, 133)
+  doc.text('TATVACARE',  stX, stY - 3,   { align: 'center' })
+  doc.text('\u2605',     stX, stY + 0.5, { align: 'center' })
+  doc.text('HEALTHCARE', stX, stY + 3.5, { align: 'center' })
+  doc.text('TECHNOLOGY', stX, stY + 6.5, { align: 'center' })
 
   return doc
 }
@@ -186,7 +250,7 @@ export const generateCertificate = (submission) => {
   doc.setFillColor(254, 252, 243)
   doc.rect(0, 0, W, H, 'F')
 
-  // Borders
+  // Double border
   doc.setDrawColor(112, 59, 150)
   doc.setLineWidth(3)
   doc.rect(8, 8, W - 16, H - 16)
@@ -216,23 +280,21 @@ export const generateCertificate = (submission) => {
   doc.setLineWidth(1)
   doc.line(W / 2 - 85, 51, W / 2 + 85, 51)
 
-  // Certify + Doctor
+  // Certify text + Doctor name
   doc.setTextColor(71, 85, 105)
   doc.setFontSize(10)
   doc.setFont('helvetica', 'normal')
   doc.text('This is to certify that', W / 2, 60, { align: 'center' })
 
-  const doctorLabel = submission.doctorName.toLowerCase().startsWith('dr')
-    ? submission.doctorName : `Dr. ${submission.doctorName}`
-
+  const drLabel = doctorLabel(submission.doctorName)
   doc.setTextColor(112, 59, 150)
   doc.setFontSize(20)
   doc.setFont('helvetica', 'bold')
-  doc.text(doctorLabel, W / 2, 71, { align: 'center' })
+  doc.text(drLabel, W / 2, 71, { align: 'center' })
 
   doc.setDrawColor(112, 59, 150)
   doc.setLineWidth(0.5)
-  const nameW = (doc.getStringUnitWidth(doctorLabel) * 20) / doc.internal.scaleFactor
+  const nameW = (doc.getStringUnitWidth(drLabel) * 20) / doc.internal.scaleFactor
   doc.line(W / 2 - nameW / 2, 74, W / 2 + nameW / 2, 74)
 
   // Clinic
@@ -251,7 +313,7 @@ export const generateCertificate = (submission) => {
   const GRID_Y = 97
   const ROW_H = 7
   const COLS = 4
-  const moduleRows = yesModules.length === 0 ? 0 : Math.ceil(yesModules.length / COLS)
+  const moduleRows = yesModules.length === 0 ? 1 : Math.ceil(yesModules.length / COLS)
 
   if (yesModules.length === 0) {
     doc.setFontSize(9)
@@ -270,69 +332,33 @@ export const generateCertificate = (submission) => {
   }
 
   // Training date
-  const afterGridY = GRID_Y + Math.max(1, moduleRows) * ROW_H + 4
+  const afterGridY = GRID_Y + moduleRows * ROW_H + 6
   doc.setTextColor(71, 85, 105)
   doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
   doc.text(`Training Completed on: ${formatDate(submission.trainingDate)}`, W / 2, afterGridY, { align: 'center' })
 
-  // ── Acknowledgment box ────────────────────────────────────────────────────
-  const ackY = afterGridY + 7
-  const ackBoxH = 32
-
-  doc.setFillColor(245, 238, 250)
-  doc.setDrawColor(184, 127, 220)
-  doc.setLineWidth(0.4)
-  doc.roundedRect(16, ackY, W - 32, ackBoxH, 2, 2, 'FD')
-
-  // Paragraph
-  const ackText =
-    `I, ${doctorLabel}, hereby confirm that I have completed the training on TatvaPractice EMR software. ` +
-    `I have received training on all the modules listed above (checked as "Yes") and have understood the ` +
-    `functionalities of the software. I acknowledge that I can request further assistance or support if required.`
-
-  doc.setFontSize(8)
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(30, 20, 60)
-  const ackLines = doc.splitTextToSize(ackText, W - 44)
-  doc.text(ackLines, W / 2, ackY + 7, { align: 'center' })
-
-  // Signature line inside box
-  const sigLineY = ackY + ackBoxH - 7
-  doc.setFontSize(8.5)
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(30, 20, 60)
-
-  doc.text('\u2022  Doctor\'s Signature:', 20, sigLineY)
-  doc.setDrawColor(100, 100, 100)
-  doc.setLineWidth(0.3)
-  doc.line(68, sigLineY, 148, sigLineY)
-
-  doc.text('\u2022  Date:', 152, sigLineY)
-  doc.line(165, sigLineY, W - 18, sigLineY)
-
   // ── Bottom signature row ──────────────────────────────────────────────────
-  const bottomSigY = ackY + ackBoxH + 12
+  const bottomSigY = afterGridY + 18
 
   doc.setDrawColor(148, 163, 184)
   doc.setLineWidth(0.4)
   doc.line(20, bottomSigY, 85, bottomSigY)
   doc.line(W / 2 - 32, bottomSigY, W / 2 + 32, bottomSigY)
-  doc.line(W - 85, bottomSigY, W - 52, bottomSigY)
+  doc.line(W - 85, bottomSigY, W - 20, bottomSigY)
 
   doc.setFontSize(8.5)
   doc.setTextColor(71, 85, 105)
   doc.setFont('helvetica', 'normal')
-
   doc.text(submission.bdmName,       52,     bottomSigY + 5,  { align: 'center' })
   doc.text('BDM / Trainer',          52,     bottomSigY + 10, { align: 'center' })
   doc.text(submission.supportMember, W / 2,  bottomSigY + 5,  { align: 'center' })
   doc.text('Support Team',           W / 2,  bottomSigY + 10, { align: 'center' })
-  doc.text('Authorised Signatory',   W - 68, bottomSigY + 5,  { align: 'center' })
-  doc.text('TatvaCare',              W - 68, bottomSigY + 10, { align: 'center' })
+  doc.text('Authorised Signatory',   W - 52, bottomSigY + 5,  { align: 'center' })
+  doc.text('TatvaCare',              W - 52, bottomSigY + 10, { align: 'center' })
 
   // ── TatvaCare Stamp ───────────────────────────────────────────────────────
-  const stX = W - 28
+  const stX = W - 22
   const stY = bottomSigY + 2
   const stR = 14
 
@@ -346,10 +372,10 @@ export const generateCertificate = (submission) => {
   doc.setFontSize(5.5)
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(67, 45, 133)
-  doc.text('TATVACARE',   stX, stY - 4,  { align: 'center' })
+  doc.text('TATVACARE',   stX, stY - 4,   { align: 'center' })
   doc.text('\u2605',      stX, stY - 0.5, { align: 'center' })
-  doc.text('HEALTHCARE',  stX, stY + 3,  { align: 'center' })
-  doc.text('TECHNOLOGY',  stX, stY + 7,  { align: 'center' })
+  doc.text('HEALTHCARE',  stX, stY + 3,   { align: 'center' })
+  doc.text('TECHNOLOGY',  stX, stY + 7,   { align: 'center' })
 
   return doc
 }

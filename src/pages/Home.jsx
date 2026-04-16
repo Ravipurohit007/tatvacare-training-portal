@@ -57,7 +57,7 @@ export default function Home() {
       )}
 
       {/* Hero */}
-      <div className="max-w-5xl mx-auto px-6 pt-16 pb-8 text-center">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-10 sm:pt-16 pb-8 text-center">
         <h1 className="text-4xl font-bold mb-3" style={{ color: '#432d85' }}>
           Training &amp; Handover Portal
         </h1>
@@ -67,7 +67,7 @@ export default function Home() {
       </div>
 
       {/* Main Cards */}
-      <div className="max-w-5xl mx-auto px-6 pb-16">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 pb-16">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
           {/* SOP Card */}

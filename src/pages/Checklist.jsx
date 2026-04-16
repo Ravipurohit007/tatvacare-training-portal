@@ -238,7 +238,7 @@ export default function Checklist() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5 sm:space-y-6">
 
         {/* ── Section 1: Training Details ── */}
         <div className="card p-6">
@@ -348,7 +348,7 @@ export default function Checklist() {
             </div>
             {CHECKLIST_ITEMS.map((item, i) => (
               <div key={item}
-                className={`grid grid-cols-[1fr_auto] items-center px-4 py-3 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'} ${i < CHECKLIST_ITEMS.length - 1 ? 'border-b border-slate-100' : ''}`}>
+                className={`flex items-center justify-between gap-2 px-3 sm:px-4 py-3 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'} ${i < CHECKLIST_ITEMS.length - 1 ? 'border-b border-slate-100' : ''}`}>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-slate-400 w-5 font-medium">{i + 1}.</span>
                   <span className="text-sm text-slate-700 font-medium">{item}</span>
@@ -464,16 +464,16 @@ export default function Checklist() {
         )}
 
         {/* Submit buttons */}
-        <div className="flex items-center justify-between pb-6">
+        <div className="flex flex-wrap items-center gap-3 justify-between pb-6">
           <button type="button" onClick={() => navigate('/')} className="btn-secondary">Cancel</button>
 
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             {(!handoverStatus || handoverStatus === 'rejected') && (
               <button
                 type="button"
                 disabled={!isFormValid || submitStatus === 'submitting'}
                 onClick={() => handleSubmit('rejected')}
-                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2 px-5 rounded-lg transition-colors"
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-5 rounded-lg transition-colors"
               >
                 {submitStatus === 'submitting' && handoverStatus === 'rejected' ? (
                   <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -493,7 +493,7 @@ export default function Checklist() {
                 type="button"
                 disabled={!isFormValid || submitStatus === 'submitting'}
                 onClick={() => handleSubmit('approved')}
-                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2 px-5 rounded-lg transition-colors"
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-5 rounded-lg transition-colors"
               >
                 {submitStatus === 'submitting' && handoverStatus === 'approved' ? (
                   <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
