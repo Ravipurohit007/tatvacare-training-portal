@@ -199,16 +199,30 @@ export default function Admin() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(null)
+  const [firebaseReadError, setFirebaseReadError] = useState('')
 
   useEffect(() => {
     if (!authed) return
 
     if (isFirebaseConfigured && db) {
       const q = query(collection(db, 'submissions'), orderBy('submittedAt', 'desc'))
-      const unsub = onSnapshot(q, (snap) => {
-        setSubmissions(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
-        setLoading(false)
-      })
+      const unsub = onSnapshot(
+        q,
+        (snap) => {
+          setSubmissions(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+          setLoading(false)
+        },
+        (err) => {
+          console.error('Firestore read blocked:', err.code, err.message)
+          setFirebaseReadError(err.code === 'permission-denied'
+            ? 'Firestore read permission denied. Update your Firestore rules to allow reads.'
+            : err.message)
+          // Fall back to localStorage so at least local data is visible
+          const data = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
+          setSubmissions(data)
+          setLoading(false)
+        }
+      )
       return unsub
     } else {
       const data = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
@@ -255,6 +269,30 @@ export default function Admin() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+
+        {/* Firestore read error banner */}
+        {firebaseReadError && (
+          <div className="mb-5 bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-start gap-3">
+            <svg className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            <div>
+              <p className="text-red-700 text-sm font-semibold">Firebase read blocked — data sync not working</p>
+              <p className="text-red-600 text-xs mt-0.5">
+                Go to <strong>Firebase Console → Firestore → Rules</strong> and replace with:
+              </p>
+              <pre className="mt-2 text-xs bg-red-100 rounded px-3 py-2 text-red-800 overflow-x-auto whitespace-pre-wrap">{`rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /submissions/{document=**} {
+      allow read, write: if true;
+    }
+  }
+}`}</pre>
+            </div>
+          </div>
+        )}
+
         {/* Search */}
         <div className="card p-4 mb-5">
           <div className="relative">
