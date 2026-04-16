@@ -4,7 +4,7 @@ import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../lib/firebase'
 import { generateChecklistReport, generateCertificate } from '../lib/pdfGenerator'
 
-const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'admin@tatva'
+const ADMIN_PASSWORD = (import.meta.env.VITE_ADMIN_PASSWORD || 'Tatva2024').trim()
 
 const formatDate = (iso) => {
   try {
