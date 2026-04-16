@@ -205,35 +205,45 @@ export default function Admin() {
     if (!authed) return
 
     if (isFirebaseConfigured && db) {
+      let migrationDone = false
+
       const q = query(collection(db, 'submissions'), orderBy('submittedAt', 'desc'))
       const unsub = onSnapshot(
         q,
         async (snap) => {
           const firebaseData = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
 
-          // Sync any localStorage-only entries up to Firebase (one-time migration)
-          const localData = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
-          if (localData.length > 0) {
-            const fbTimes = new Set(firebaseData.map((s) => s.submittedAt))
-            const missing = localData.filter((s) => s.submittedAt && !fbTimes.has(s.submittedAt))
-            if (missing.length > 0) {
-              for (const entry of missing) {
-                const { id: _localId, ...data } = entry
-                try { await addDoc(collection(db, 'submissions'), data) } catch (_) {}
+          // One-time migration per session: push any localStorage-only entries to Firebase
+          if (!migrationDone) {
+            migrationDone = true
+            const localData = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
+            if (localData.length > 0) {
+              const fbTimes = new Set(firebaseData.map((s) => s.submittedAt))
+              const missing = localData.filter((s) => s.submittedAt && !fbTimes.has(s.submittedAt))
+              if (missing.length > 0) {
+                for (const entry of missing) {
+                  const { id: _id, ...data } = entry
+                  try { await addDoc(collection(db, 'submissions'), data) } catch (_) {}
+                }
+                // onSnapshot fires again with the migrated docs — wait for that
+                return
               }
-              // onSnapshot will fire again with the newly synced docs — no need to setSubmissions here
-              return
             }
+            // Nothing to migrate — clear localStorage so it never diverges again
+            localStorage.removeItem('tc_submissions')
           }
 
           setSubmissions(firebaseData)
           setLoading(false)
         },
         (err) => {
-          console.error('Firestore read blocked:', err.code, err.message)
-          setFirebaseReadError(err.code === 'permission-denied'
-            ? 'Firestore read permission denied. Update your Firestore rules to allow reads.'
-            : err.message)
+          console.error('Firestore read error:', err.code)
+          setFirebaseReadError(
+            err.code === 'permission-denied'
+              ? 'Firestore read permission denied. Update your Firestore rules to allow reads.'
+              : err.message
+          )
+          // Show whatever is in localStorage as a fallback
           const data = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
           setSubmissions(data)
           setLoading(false)

@@ -69,7 +69,7 @@ export default function Checklist() {
 
   const yesCount = Object.values(checklist).filter((v) => v === 'Yes').length
 
-  const handleSubmit = (decisionStatus) => {
+  const handleSubmit = async (decisionStatus) => {
     if (!isFormValid || !decisionStatus) return
     setSubmitStatus('submitting')
     setError('')
@@ -83,7 +83,7 @@ export default function Checklist() {
       submittedAt: new Date().toISOString(),
     }
 
-    // Step 1: Generate PDFs (synchronous — no network needed)
+    // Step 1: Generate PDFs (sync — no network)
     try {
       const checklistDoc = generateChecklistReport(submission)
       const certDoc = generateCertificate(submission)
@@ -98,23 +98,29 @@ export default function Checklist() {
       return
     }
 
-    // Step 2: Save — localStorage first (instant), then Firebase
-    const existing = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
-    existing.unshift({ ...submission, id: Date.now().toString() })
-    localStorage.setItem('tc_submissions', JSON.stringify(existing))
-
+    // Step 2: Save to Firebase (single source of truth)
     if (isFirebaseConfigured && db) {
-      // Try Firebase with a 10s timeout — if it fails, data is still in localStorage
-      const savePromise = addDoc(collection(db, 'submissions'), submission)
-      const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('timeout')), 10000)
-      )
-      Promise.race([savePromise, timeout]).catch((e) => {
-        console.error('Firebase save failed — data saved locally only:', e)
-      })
+      try {
+        await Promise.race([
+          addDoc(collection(db, 'submissions'), submission),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
+        ])
+        // Firebase saved — no localStorage needed
+      } catch (e) {
+        // Firebase failed — save locally so Admin can sync it later
+        console.error('Firebase save failed, storing locally as backup:', e)
+        const existing = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
+        existing.unshift({ ...submission, id: Date.now().toString() })
+        localStorage.setItem('tc_submissions', JSON.stringify(existing))
+        setError('Saved locally — will sync to cloud when connection is restored.')
+      }
+    } else {
+      // No Firebase — localStorage only (demo mode)
+      const existing = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
+      existing.unshift({ ...submission, id: Date.now().toString() })
+      localStorage.setItem('tc_submissions', JSON.stringify(existing))
     }
 
-    // Show success immediately — don't wait for network
     setHandoverStatus(decisionStatus)
     setSubmitStatus('success')
   }
