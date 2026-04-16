@@ -52,11 +52,16 @@ export const generateChecklistReport = (submission) => {
   autoTable(doc, {
     startY: 50,
     body: [
-      ['Doctor Name',          submission.doctorName],
-      ['Clinic Name',          submission.clinicName],
-      ['Training Date',        formatDate(submission.trainingDate)],
-      ['BDM Name',             submission.bdmName],
-      ['Support Team Member',  submission.supportMember],
+      ['Doctor Name',                submission.doctorName],
+      ['Doctor Phone',               submission.doctorPhone || '—'],
+      ['City / State',               [submission.doctorCity, submission.doctorState].filter(Boolean).join(', ') || '—'],
+      ['Clinic Name',                submission.clinicName],
+      ['No. of Staff',               submission.noOfStaff || '—'],
+      ['Frontdesk / Receptionist',   submission.frontdeskNumber || '—'],
+      ['Training Date',              formatDate(submission.trainingDate)],
+      ['BDM Name',                   submission.bdmName],
+      ['AM Name',                    submission.amName || '—'],
+      ['Support Team Member',        submission.supportMember],
     ],
     theme: 'plain',
     styles: { fontSize: 10, cellPadding: 3 },
@@ -205,7 +210,9 @@ export const generateCertificate = (submission) => {
   doc.setTextColor(71, 85, 105)
   doc.setFontSize(11)
   doc.setFont('helvetica', 'normal')
-  doc.text(`of  ${submission.clinicName}`, W / 2, 100, { align: 'center' })
+  const location = [submission.doctorCity, submission.doctorState].filter(Boolean).join(', ')
+  const clinicLine = location ? `${submission.clinicName}, ${location}` : submission.clinicName
+  doc.text(`of  ${clinicLine}`, W / 2, 100, { align: 'center' })
   doc.text(
     'has successfully completed training on the following TatvaCare modules:',
     W / 2, 110, { align: 'center' }

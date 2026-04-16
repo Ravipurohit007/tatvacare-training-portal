@@ -105,10 +105,16 @@ function DetailModal({ submission, onClose }) {
           {/* Details */}
           <div className="grid grid-cols-2 gap-3 text-sm">
             {[
-              ['Training Date', formatDate(submission.trainingDate)],
-              ['Submitted At',  formatDateTime(submission.submittedAt)],
-              ['BDM',          submission.bdmName],
-              ['Support Team', submission.supportMember],
+              ['Training Date',        formatDate(submission.trainingDate)],
+              ['Submitted At',         formatDateTime(submission.submittedAt)],
+              ['Doctor Phone',         submission.doctorPhone || '—'],
+              ['City / State',         [submission.doctorCity, submission.doctorState].filter(Boolean).join(', ') || '—'],
+              ['Clinic',               submission.clinicName],
+              ['No. of Staff',         submission.noOfStaff || '—'],
+              ['Frontdesk No.',        submission.frontdeskNumber || '—'],
+              ['BDM',                  submission.bdmName],
+              ['AM',                   submission.amName || '—'],
+              ['Support Team',         submission.supportMember],
             ].map(([k, v]) => (
               <div key={k}>
                 <p className="text-xs text-slate-400 mb-0.5">{k}</p>

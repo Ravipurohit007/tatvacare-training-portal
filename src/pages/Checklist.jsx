@@ -10,9 +10,15 @@ const initialChecklist = () =>
 
 const initialForm = {
   doctorName: '',
+  doctorPhone: '',
+  doctorCity: '',
+  doctorState: '',
   clinicName: '',
+  noOfStaff: '',
+  frontdeskNumber: '',
   trainingDate: '',
   bdmName: '',
+  amName: '',
   supportMember: '',
 }
 
@@ -54,6 +60,7 @@ export default function Checklist() {
     form.clinicName.trim() &&
     form.trainingDate &&
     form.bdmName.trim() &&
+    form.amName.trim() &&
     form.supportMember.trim()
 
   const yesCount = Object.values(checklist).filter((v) => v === 'Yes').length
@@ -220,6 +227,11 @@ export default function Checklist() {
             Training Details
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+            {/* Doctor Info */}
+            <div className="sm:col-span-2">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Doctor & Clinic Info</p>
+            </div>
             <div>
               <label className="form-label">Doctor Name <span className="text-red-500">*</span></label>
               <input
@@ -229,6 +241,36 @@ export default function Checklist() {
                 value={form.doctorName}
                 onChange={(e) => setForm({ ...form, doctorName: e.target.value })}
                 required
+              />
+            </div>
+            <div>
+              <label className="form-label">Doctor Phone Number</label>
+              <input
+                type="tel"
+                className="form-input"
+                placeholder="e.g. 9876543210"
+                value={form.doctorPhone}
+                onChange={(e) => setForm({ ...form, doctorPhone: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="form-label">City</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="e.g. Mumbai"
+                value={form.doctorCity}
+                onChange={(e) => setForm({ ...form, doctorCity: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="form-label">State</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="e.g. Maharashtra"
+                value={form.doctorState}
+                onChange={(e) => setForm({ ...form, doctorState: e.target.value })}
               />
             </div>
             <div>
@@ -243,6 +285,26 @@ export default function Checklist() {
               />
             </div>
             <div>
+              <label className="form-label">No. of Staff</label>
+              <input
+                type="number"
+                className="form-input"
+                placeholder="e.g. 5"
+                value={form.noOfStaff}
+                onChange={(e) => setForm({ ...form, noOfStaff: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="form-label">Frontdesk / Receptionist Number</label>
+              <input
+                type="tel"
+                className="form-input"
+                placeholder="e.g. 9876543210"
+                value={form.frontdeskNumber}
+                onChange={(e) => setForm({ ...form, frontdeskNumber: e.target.value })}
+              />
+            </div>
+            <div>
               <label className="form-label">Training Completion Date <span className="text-red-500">*</span></label>
               <input
                 type="date"
@@ -252,14 +314,30 @@ export default function Checklist() {
                 required
               />
             </div>
+
+            {/* Team Info */}
+            <div className="sm:col-span-2 mt-2">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">TatvaCare Team</p>
+            </div>
             <div>
               <label className="form-label">BDM Name <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 className="form-input"
-                placeholder="Business Development Manager"
+                placeholder="BDM who conducted the training"
                 value={form.bdmName}
                 onChange={(e) => setForm({ ...form, bdmName: e.target.value })}
+                required
+              />
+            </div>
+            <div>
+              <label className="form-label">AM Name <span className="text-red-500">*</span></label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Account Manager (BDM reports to)"
+                value={form.amName}
+                onChange={(e) => setForm({ ...form, amName: e.target.value })}
                 required
               />
             </div>
@@ -268,7 +346,7 @@ export default function Checklist() {
               <input
                 type="text"
                 className="form-input"
-                placeholder="Support team member who conducted the training"
+                placeholder="Support member who will take care of this doctor going forward"
                 value={form.supportMember}
                 onChange={(e) => setForm({ ...form, supportMember: e.target.value })}
                 required
