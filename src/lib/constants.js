@@ -6,7 +6,7 @@ export const CHECKLIST_ITEMS = [
   'Anydesk Installed',
   'Shortcut Created for Software Link',
   'SmartSync',
-  'SmartSync Pen',
+  'SmartSync Delivered?',
   'CVT',
   'Teleconsultation',
   'VoiceRx',

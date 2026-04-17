@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { collection, addDoc } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../lib/firebase'
 import { CHECKLIST_ITEMS, STATUS_COLORS } from '../lib/constants'
-import { generateChecklistReport, generateCertificate } from '../lib/pdfGenerator'
+import { generateChecklistReport } from '../lib/pdfGenerator'
 
 const initialChecklist = () =>
   Object.fromEntries(CHECKLIST_ITEMS.map((item) => [item, 'NA']))
@@ -13,14 +13,62 @@ const initialForm = {
   doctorPhone: '',
   doctorCity: '',
   doctorState: '',
+  completeAddress: '',
   clinicName: '',
+  clinicType: '',
   noOfStaff: '',
   frontdeskNumber: '',
+  receptionistName: '',
   onboardingDate: '',
   trainingDate: '',
   bdmName: '',
+  bdmPhone: '',
   amName: '',
   supportMember: '',
+  deviceDetails: '',
+  internetType: '',
+}
+
+const onlyDigits = (e) => {
+  if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+    e.preventDefault()
+  }
+}
+
+function PhoneInput({ label, required, value, onChange, error }) {
+  return (
+    <div>
+      <label className="form-label">{label}{required && <span className="text-red-500"> *</span>}</label>
+      <input
+        type="tel"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        maxLength={10}
+        className={`form-input ${error ? 'border-red-400' : ''}`}
+        placeholder="10-digit number"
+        value={value}
+        onKeyDown={onlyDigits}
+        onChange={(e) => onChange(e.target.value.replace(/\D/g, '').slice(0, 10))}
+      />
+      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+    </div>
+  )
+}
+
+function SelectInput({ label, required, value, onChange, options, placeholder }) {
+  return (
+    <div>
+      <label className="form-label">{label}{required && <span className="text-red-500"> *</span>}</label>
+      <select
+        className={`form-input ${!value ? 'text-slate-400' : 'text-slate-800'}`}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        <option value="">{placeholder || 'Select…'}</option>
+        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+    </div>
+  )
 }
 
 function StatusToggle({ value, onChange }) {
@@ -53,24 +101,44 @@ export default function Checklist() {
   const [form, setForm] = useState(initialForm)
   const [checklist, setChecklist] = useState(initialChecklist())
   const [additionalComments, setAdditionalComments] = useState('')
-  const [handoverStatus, setHandoverStatus] = useState('') // '' | 'approved' | 'rejected'
-  const [handoverComment, setHandoverComment] = useState('')
-  const [submitStatus, setSubmitStatus] = useState('idle') // idle | submitting | success | error
-  const [pdfUrls, setPdfUrls] = useState({ checklist: null, cert: null })
+  const [submitStatus, setSubmitStatus] = useState('idle')
+  const [pdfUrl, setPdfUrl] = useState(null)
   const [error, setError] = useState('')
 
-  const isFormValid =
+  const set = (field) => (val) => setForm((f) => ({ ...f, [field]: val }))
+
+  // ── Validation ────────────────────────────────────────────────────────────────
+  const doctorPhoneErr = form.doctorPhone && !/^\d{10}$/.test(form.doctorPhone)
+    ? 'Must be exactly 10 digits' : ''
+  const frontdeskErr = form.frontdeskNumber && !/^\d{10}$/.test(form.frontdeskNumber)
+    ? 'Must be exactly 10 digits' : ''
+  const bdmPhoneErr = form.bdmPhone && !/^\d{10}$/.test(form.bdmPhone)
+    ? 'Must be exactly 10 digits' : ''
+
+  const dateGapErr = (() => {
+    if (!form.onboardingDate || !form.trainingDate) return ''
+    const diff = (new Date(form.trainingDate) - new Date(form.onboardingDate)) / 86400000
+    if (diff < 3) return `Training date must be at least 3 days after onboarding date`
+    return ''
+  })()
+
+  const isFormValid = !!(
     form.doctorName.trim() &&
     form.clinicName.trim() &&
+    form.clinicType &&
+    form.onboardingDate &&
     form.trainingDate &&
     form.bdmName.trim() &&
     form.amName.trim() &&
-    form.supportMember.trim()
+    form.supportMember.trim() &&
+    !doctorPhoneErr && !frontdeskErr && !bdmPhoneErr && !dateGapErr
+  )
 
   const yesCount = Object.values(checklist).filter((v) => v === 'Yes').length
 
-  const handleSubmit = async (decisionStatus) => {
-    if (!isFormValid || !decisionStatus) return
+  // ── Submit ────────────────────────────────────────────────────────────────────
+  const handleSubmit = async () => {
+    if (!isFormValid) return
     setSubmitStatus('submitting')
     setError('')
 
@@ -78,50 +146,40 @@ export default function Checklist() {
       ...form,
       checklist,
       additionalComments,
-      handoverStatus: decisionStatus,
-      handoverComment,
+      handoverStatus: 'pending',
       submittedAt: new Date().toISOString(),
     }
 
-    // Step 1: Generate PDFs (sync — no network)
+    // Generate checklist report PDF
     try {
-      const checklistDoc = generateChecklistReport(submission)
-      const certDoc = generateCertificate(submission)
-      setPdfUrls({
-        checklist: URL.createObjectURL(checklistDoc.output('blob')),
-        cert: URL.createObjectURL(certDoc.output('blob')),
-      })
+      const doc = generateChecklistReport(submission)
+      setPdfUrl(URL.createObjectURL(doc.output('blob')))
     } catch (pdfErr) {
       console.error('PDF error:', pdfErr)
-      setError('Failed to generate PDFs. Please try again.')
+      setError('Failed to generate PDF. Please try again.')
       setSubmitStatus('error')
       return
     }
 
-    // Step 2: Save to Firebase (single source of truth)
+    // Save to Firebase (primary); localStorage as fallback
     if (isFirebaseConfigured && db) {
       try {
         await Promise.race([
           addDoc(collection(db, 'submissions'), submission),
           new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
         ])
-        // Firebase saved — no localStorage needed
       } catch (e) {
-        // Firebase failed — save locally so Admin can sync it later
-        console.error('Firebase save failed, storing locally as backup:', e)
+        console.error('Firebase save failed, storing locally:', e)
         const existing = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
         existing.unshift({ ...submission, id: Date.now().toString() })
         localStorage.setItem('tc_submissions', JSON.stringify(existing))
-        setError('Saved locally — will sync to cloud when connection is restored.')
       }
     } else {
-      // No Firebase — localStorage only (demo mode)
       const existing = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
       existing.unshift({ ...submission, id: Date.now().toString() })
       localStorage.setItem('tc_submissions', JSON.stringify(existing))
     }
 
-    setHandoverStatus(decisionStatus)
     setSubmitStatus('success')
   }
 
@@ -129,51 +187,39 @@ export default function Checklist() {
     setForm(initialForm)
     setChecklist(initialChecklist())
     setAdditionalComments('')
-    setHandoverStatus('')
-    setHandoverComment('')
-    setPdfUrls({ checklist: null, cert: null })
+    setPdfUrl(null)
     setSubmitStatus('idle')
     setError('')
   }
 
   // ── Success Screen ────────────────────────────────────────────────────────────
   if (submitStatus === 'success') {
-    const isApproved = handoverStatus === 'approved'
     return (
       <div className="min-h-screen flex items-center justify-center p-6"
         style={{ background: 'linear-gradient(135deg, #f5eefa 0%, #f8f4ff 50%, #eef2ff 100%)' }}>
         <div className="card max-w-md w-full p-8 text-center">
-          {/* Status icon */}
-          <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5 ${
-            isApproved ? 'bg-green-100' : 'bg-red-100'}`}>
-            {isApproved ? (
-              <svg className="w-9 h-9 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-              </svg>
-            ) : (
-              <svg className="w-9 h-9 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            )}
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5 bg-amber-100">
+            <svg className="w-9 h-9 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
           </div>
 
-          {/* Status badge */}
-          <span className={`inline-block px-4 py-1 rounded-full text-sm font-bold mb-3 ${
-            isApproved ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-            Handover {isApproved ? 'Approved' : 'Rejected'}
+          <span className="inline-block px-4 py-1 rounded-full text-sm font-bold mb-3 bg-amber-100 text-amber-700">
+            Pending Support Review
           </span>
 
-          <h2 className="text-xl font-bold text-slate-800 mb-1">Submission Saved!</h2>
+          <h2 className="text-xl font-bold text-slate-800 mb-1">Submitted!</h2>
           <p className="text-slate-500 text-sm mb-1">
             <span className="font-semibold text-slate-700">{form.doctorName}</span> — {form.clinicName}
           </p>
           <p className="text-slate-400 text-xs mb-7">
-            {yesCount} module{yesCount !== 1 ? 's' : ''} completed
+            {yesCount} module{yesCount !== 1 ? 's' : ''} completed · awaiting Support team review
           </p>
 
-          <div className="space-y-3 mb-7">
+          <div className="mb-7">
             <a
-              href={pdfUrls.checklist}
+              href={pdfUrl}
               download={`Checklist_${form.doctorName.replace(/\s+/g, '_')}.pdf`}
               className="flex items-center justify-between w-full rounded-lg px-4 py-3 transition-colors"
               style={{ background: '#f5eefa', border: '1px solid #d3b2eb' }}
@@ -189,32 +235,10 @@ export default function Checklist() {
                 </div>
                 <div className="text-left">
                   <p className="text-sm font-semibold" style={{ color: '#432d85' }}>Training Checklist Report</p>
-                  <p className="text-xs" style={{ color: '#9e54cc' }}>Yes &amp; No modules · with handover status</p>
+                  <p className="text-xs" style={{ color: '#9e54cc' }}>Download for your records</p>
                 </div>
               </div>
               <svg className="w-5 h-5" style={{ color: '#703b96' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-            </a>
-
-            <a
-              href={pdfUrls.cert}
-              download={`Certificate_${form.doctorName.replace(/\s+/g, '_')}.pdf`}
-              className="flex items-center justify-between w-full bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg px-4 py-3 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-4 h-4 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                  </svg>
-                </div>
-                <div className="text-left">
-                  <p className="text-sm font-semibold text-green-800">Training Certificate</p>
-                  <p className="text-xs text-green-500">Only YES modules listed</p>
-                </div>
-              </div>
-              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
             </a>
@@ -234,7 +258,7 @@ export default function Checklist() {
     <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #f5eefa 0%, #f8f4ff 50%, #eef2ff 100%)' }}>
       {/* Header */}
       <div className="shadow" style={{ background: 'linear-gradient(90deg, #432d85 0%, #703b96 100%)' }}>
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center gap-4">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-4">
           <button onClick={() => navigate('/')} className="text-purple-200 hover:text-white transition-colors">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -242,7 +266,7 @@ export default function Checklist() {
           </button>
           <div>
             <h1 className="text-white font-bold text-lg">Training Completion Checklist</h1>
-            <p className="text-purple-200 text-xs">Fill all fields, mark module status, then approve or reject handover</p>
+            <p className="text-purple-200 text-xs">Fill all required fields, mark module status, then submit for review</p>
           </div>
         </div>
       </div>
@@ -256,74 +280,102 @@ export default function Checklist() {
             Training Details
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+            {/* Doctor & Clinic */}
             <div className="sm:col-span-2">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Doctor &amp; Clinic Info</p>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Doctor &amp; Clinic Info</p>
             </div>
+
             <div>
               <label className="form-label">Doctor Name <span className="text-red-500">*</span></label>
               <input type="text" className="form-input" placeholder="e.g. Dr. Priya Sharma"
-                value={form.doctorName} onChange={(e) => setForm({ ...form, doctorName: e.target.value })} required />
+                value={form.doctorName} onChange={(e) => set('doctorName')(e.target.value)} />
             </div>
-            <div>
-              <label className="form-label">Doctor Phone Number</label>
-              <input type="tel" className="form-input" placeholder="e.g. 9876543210"
-                value={form.doctorPhone} onChange={(e) => setForm({ ...form, doctorPhone: e.target.value })} />
-            </div>
+            <PhoneInput label="Doctor Phone Number" value={form.doctorPhone}
+              onChange={set('doctorPhone')} error={doctorPhoneErr} />
+
             <div>
               <label className="form-label">City</label>
               <input type="text" className="form-input" placeholder="e.g. Mumbai"
-                value={form.doctorCity} onChange={(e) => setForm({ ...form, doctorCity: e.target.value })} />
+                value={form.doctorCity} onChange={(e) => set('doctorCity')(e.target.value)} />
             </div>
             <div>
               <label className="form-label">State</label>
               <input type="text" className="form-input" placeholder="e.g. Maharashtra"
-                value={form.doctorState} onChange={(e) => setForm({ ...form, doctorState: e.target.value })} />
+                value={form.doctorState} onChange={(e) => set('doctorState')(e.target.value)} />
             </div>
+
+            <div className="sm:col-span-2">
+              <label className="form-label">Complete Address</label>
+              <textarea className="form-input resize-none" rows={2}
+                placeholder="Full clinic address…"
+                value={form.completeAddress} onChange={(e) => set('completeAddress')(e.target.value)} />
+            </div>
+
             <div>
               <label className="form-label">Clinic Name <span className="text-red-500">*</span></label>
               <input type="text" className="form-input" placeholder="e.g. Sunshine Medical Center"
-                value={form.clinicName} onChange={(e) => setForm({ ...form, clinicName: e.target.value })} required />
+                value={form.clinicName} onChange={(e) => set('clinicName')(e.target.value)} />
             </div>
+            <SelectInput label="Clinic Type" required value={form.clinicType} onChange={set('clinicType')}
+              options={['Multi Specialty', 'Hospital', 'Individual Practice']}
+              placeholder="Select clinic type…" />
+
             <div>
               <label className="form-label">No. of Staff</label>
               <input type="number" className="form-input" placeholder="e.g. 5"
-                value={form.noOfStaff} onChange={(e) => setForm({ ...form, noOfStaff: e.target.value })} />
+                value={form.noOfStaff} onChange={(e) => set('noOfStaff')(e.target.value)} />
             </div>
+            <PhoneInput label="Frontdesk / Receptionist Number" value={form.frontdeskNumber}
+              onChange={set('frontdeskNumber')} error={frontdeskErr} />
+
             <div>
-              <label className="form-label">Frontdesk / Receptionist Number</label>
-              <input type="tel" className="form-input" placeholder="e.g. 9876543210"
-                value={form.frontdeskNumber} onChange={(e) => setForm({ ...form, frontdeskNumber: e.target.value })} />
+              <label className="form-label">Receptionist Name</label>
+              <input type="text" className="form-input" placeholder="e.g. Sunita Patel"
+                value={form.receptionistName} onChange={(e) => set('receptionistName')(e.target.value)} />
             </div>
+            <div /> {/* spacer */}
+
             <div>
-              <label className="form-label">Onboarding Date</label>
+              <label className="form-label">Onboarding Date <span className="text-red-500">*</span></label>
               <input type="date" className="form-input"
-                value={form.onboardingDate} onChange={(e) => setForm({ ...form, onboardingDate: e.target.value })} />
+                value={form.onboardingDate} onChange={(e) => set('onboardingDate')(e.target.value)} />
             </div>
             <div>
               <label className="form-label">Training Completion Date <span className="text-red-500">*</span></label>
-              <input type="date" className="form-input"
-                value={form.trainingDate} onChange={(e) => setForm({ ...form, trainingDate: e.target.value })} required />
+              <input type="date" className={`form-input ${dateGapErr ? 'border-red-400' : ''}`}
+                value={form.trainingDate} onChange={(e) => set('trainingDate')(e.target.value)} />
+              {dateGapErr && <p className="text-red-500 text-xs mt-1">{dateGapErr}</p>}
             </div>
 
+            {/* TatvaCare Team */}
             <div className="sm:col-span-2 mt-2">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">TatvaCare Team</p>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">TatvaCare Team</p>
             </div>
+
             <div>
               <label className="form-label">BDM Name <span className="text-red-500">*</span></label>
               <input type="text" className="form-input" placeholder="BDM who conducted the training"
-                value={form.bdmName} onChange={(e) => setForm({ ...form, bdmName: e.target.value })} required />
+                value={form.bdmName} onChange={(e) => set('bdmName')(e.target.value)} />
             </div>
+            <PhoneInput label="BDM Phone Number" value={form.bdmPhone}
+              onChange={set('bdmPhone')} error={bdmPhoneErr} />
+
             <div>
               <label className="form-label">AM Name <span className="text-red-500">*</span></label>
-              <input type="text" className="form-input" placeholder="Account Manager (BDM reports to)"
-                value={form.amName} onChange={(e) => setForm({ ...form, amName: e.target.value })} required />
+              <input type="text" className="form-input" placeholder="Account Manager"
+                value={form.amName} onChange={(e) => set('amName')(e.target.value)} />
             </div>
-            <div className="sm:col-span-2">
-              <label className="form-label">Support Team Member Name <span className="text-red-500">*</span></label>
-              <input type="text" className="form-input"
-                placeholder="Support member who will take care of this doctor going forward"
-                value={form.supportMember} onChange={(e) => setForm({ ...form, supportMember: e.target.value })} required />
+            <div>
+              <label className="form-label">Support Team Member <span className="text-red-500">*</span></label>
+              <input type="text" className="form-input" placeholder="Support member for this doctor"
+                value={form.supportMember} onChange={(e) => set('supportMember')(e.target.value)} />
             </div>
+
+            <SelectInput label="Device Details" value={form.deviceDetails} onChange={set('deviceDetails')}
+              options={['Tablet', 'Mobile', 'Laptop', 'Desktop']} placeholder="Select device…" />
+            <SelectInput label="Internet Type" value={form.internetType} onChange={set('internetType')}
+              options={['Broadband', 'Mobile']} placeholder="Select internet type…" />
           </div>
         </div>
 
@@ -336,15 +388,15 @@ export default function Checklist() {
             </h2>
             <div className="flex items-center gap-3 text-xs">
               <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span>
+                <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
                 <span className="text-slate-500">Yes ({Object.values(checklist).filter(v => v === 'Yes').length})</span>
               </span>
               <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-red-500 inline-block"></span>
+                <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
                 <span className="text-slate-500">No ({Object.values(checklist).filter(v => v === 'No').length})</span>
               </span>
               <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-slate-400 inline-block"></span>
+                <span className="w-2 h-2 rounded-full bg-slate-400 inline-block" />
                 <span className="text-slate-500">NA ({Object.values(checklist).filter(v => v === 'NA').length})</span>
               </span>
             </div>
@@ -368,7 +420,7 @@ export default function Checklist() {
           </div>
         </div>
 
-        {/* ── Section 3: Comments ── */}
+        {/* ── Section 3: Additional Comments ── */}
         <div className="card p-6">
           <h2 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
             <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: '#703b96' }}>3</span>
@@ -383,141 +435,38 @@ export default function Checklist() {
           />
         </div>
 
-        {/* ── Section 4: Handover Decision ── */}
-        <div className="card p-6">
-          <h2 className="text-base font-bold text-slate-800 mb-2 flex items-center gap-2">
-            <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: '#703b96' }}>4</span>
-            Handover Decision
-          </h2>
-          <p className="text-slate-400 text-xs mb-5">
-            Review the checklist above and decide whether to approve or reject this handover.
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-            {/* Approve */}
-            <button
-              type="button"
-              onClick={() => setHandoverStatus(handoverStatus === 'approved' ? '' : 'approved')}
-              className={`rounded-xl border-2 p-5 text-left transition-all ${
-                handoverStatus === 'approved'
-                  ? 'bg-green-50 border-green-500'
-                  : 'bg-white border-slate-200 hover:border-green-300'
-              }`}
-            >
-              <div className="flex items-center gap-3 mb-1">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                  handoverStatus === 'approved' ? 'bg-green-500' : 'bg-slate-100'}`}>
-                  <svg className={`w-4 h-4 ${handoverStatus === 'approved' ? 'text-white' : 'text-slate-400'}`}
-                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-                <span className={`font-bold text-sm ${handoverStatus === 'approved' ? 'text-green-700' : 'text-slate-600'}`}>
-                  Approve Handover
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 pl-11">Training complete. Doctor is ready to use the system.</p>
-            </button>
-
-            {/* Reject */}
-            <button
-              type="button"
-              onClick={() => setHandoverStatus(handoverStatus === 'rejected' ? '' : 'rejected')}
-              className={`rounded-xl border-2 p-5 text-left transition-all ${
-                handoverStatus === 'rejected'
-                  ? 'bg-red-50 border-red-500'
-                  : 'bg-white border-slate-200 hover:border-red-300'
-              }`}
-            >
-              <div className="flex items-center gap-3 mb-1">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                  handoverStatus === 'rejected' ? 'bg-red-500' : 'bg-slate-100'}`}>
-                  <svg className={`w-4 h-4 ${handoverStatus === 'rejected' ? 'text-white' : 'text-slate-400'}`}
-                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </div>
-                <span className={`font-bold text-sm ${handoverStatus === 'rejected' ? 'text-red-700' : 'text-slate-600'}`}>
-                  Reject Handover
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 pl-11">Training incomplete. Follow-up required before handover.</p>
-            </button>
-          </div>
-
-          {/* Comment for decision */}
-          {handoverStatus && (
-            <div className={`rounded-lg p-4 ${handoverStatus === 'approved' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
-              <label className={`block text-sm font-semibold mb-2 ${handoverStatus === 'approved' ? 'text-green-700' : 'text-red-700'}`}>
-                {handoverStatus === 'approved' ? 'Approval Comment (optional)' : 'Rejection Reason (optional)'}
-              </label>
-              <textarea
-                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none"
-                rows={2}
-                placeholder={handoverStatus === 'approved'
-                  ? 'e.g. Doctor and staff are fully trained. All modules completed successfully.'
-                  : 'e.g. Pharmacy module not completed. Re-training required on billing.'}
-                value={handoverComment}
-                onChange={(e) => setHandoverComment(e.target.value)}
-                style={{ '--tw-ring-color': handoverStatus === 'approved' ? '#22c55e' : '#ef4444' }}
-                onFocus={e => e.target.style.boxShadow = `0 0 0 2px ${handoverStatus === 'approved' ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`}
-                onBlur={e => e.target.style.boxShadow = 'none'}
-              />
-            </div>
-          )}
-        </div>
-
         {/* Error */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-700 text-sm">{error}</div>
         )}
 
-        {/* Submit buttons */}
+        {/* Submit */}
         <div className="flex flex-wrap items-center gap-3 justify-between pb-6">
           <button type="button" onClick={() => navigate('/')} className="btn-secondary">Cancel</button>
-
-          <div className="flex flex-wrap gap-3">
-            {(!handoverStatus || handoverStatus === 'rejected') && (
-              <button
-                type="button"
-                disabled={!isFormValid || submitStatus === 'submitting'}
-                onClick={() => handleSubmit('rejected')}
-                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-5 rounded-lg transition-colors"
-              >
-                {submitStatus === 'submitting' && handoverStatus === 'rejected' ? (
-                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                )}
-                Reject &amp; Save
-              </button>
+          <button
+            type="button"
+            disabled={!isFormValid || submitStatus === 'submitting'}
+            onClick={handleSubmit}
+            className="flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-6 rounded-lg transition-colors"
+            style={{ background: isFormValid ? 'linear-gradient(90deg,#432d85,#703b96)' : '#94a3b8' }}
+          >
+            {submitStatus === 'submitting' ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Saving…
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Submit for Review
+              </>
             )}
-            {(!handoverStatus || handoverStatus === 'approved') && (
-              <button
-                type="button"
-                disabled={!isFormValid || submitStatus === 'submitting'}
-                onClick={() => handleSubmit('approved')}
-                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-5 rounded-lg transition-colors"
-              >
-                {submitStatus === 'submitting' && handoverStatus === 'approved' ? (
-                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-                Approve &amp; Save
-              </button>
-            )}
-          </div>
+          </button>
         </div>
       </div>
     </div>
