@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { collection, addDoc, doc, runTransaction } from 'firebase/firestore'
+import { collection, addDoc, doc, updateDoc, runTransaction } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../lib/firebase'
 import { CHECKLIST_ITEMS, STATUS_COLORS } from '../lib/constants'
 import { generateChecklistReport } from '../lib/pdfGenerator'
@@ -125,6 +125,10 @@ export default function Checklist() {
   const [submitStatus, setSubmitStatus] = useState('idle')
   const [pdfUrl, setPdfUrl] = useState(null)
   const [error, setError] = useState('')
+  const [submissionId, setSubmissionId] = useState(null)
+  const [signedFile, setSignedFile] = useState(null)
+  const [signUploadStatus, setSignUploadStatus] = useState('idle')
+  const [signUploadError, setSignUploadError] = useState('')
 
   const set = (field) => (val) => setForm((f) => ({ ...f, [field]: val }))
 
@@ -187,7 +191,7 @@ export default function Checklist() {
     if (isFirebaseConfigured && db) {
       try {
         await Promise.race([
-          addDoc(collection(db, 'submissions'), submission),
+          addDoc(collection(db, 'submissions'), submission).then(ref => setSubmissionId(ref.id)),
           new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
         ])
       } catch (e) {
@@ -212,6 +216,41 @@ export default function Checklist() {
     setPdfUrl(null)
     setSubmitStatus('idle')
     setError('')
+    setSubmissionId(null)
+    setSignedFile(null)
+    setSignUploadStatus('idle')
+    setSignUploadError('')
+  }
+
+  const handleSignedUpload = async () => {
+    if (!signedFile || !submissionId) return
+    if (signedFile.size > 900000) {
+      setSignUploadError('File too large. Please use an image or PDF under 900KB.')
+      setSignUploadStatus('error')
+      return
+    }
+    setSignUploadStatus('uploading')
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result)
+        reader.onerror = reject
+        reader.readAsDataURL(signedFile)
+      })
+      await Promise.race([
+        updateDoc(doc(db, 'submissions', submissionId), {
+          signedChecklistFile: base64,
+          signedChecklistName: signedFile.name,
+          signedChecklistUploadedAt: new Date().toISOString(),
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Upload timed out')), 15000))
+      ])
+      setSignUploadStatus('done')
+    } catch (e) {
+      console.error(e)
+      setSignUploadError(e.message || 'Upload failed. Please try again.')
+      setSignUploadStatus('error')
+    }
   }
 
   // ── Success Screen ────────────────────────────────────────────────────────────
@@ -264,6 +303,32 @@ export default function Checklist() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
             </a>
+          </div>
+
+          {/* Upload Signed Checklist */}
+          <div className="mb-6 text-left">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Upload Signed Checklist</p>
+            {signUploadStatus === 'done' ? (
+              <div className="flex items-center gap-2 text-green-700 text-sm font-semibold py-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Signed checklist uploaded!
+              </div>
+            ) : (
+              <div className="rounded-lg p-3" style={{ background: '#f5eefa', border: '1px solid #d3b2eb' }}>
+                <input type="file" accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={e => { setSignedFile(e.target.files[0]); setSignUploadStatus('idle'); setSignUploadError('') }}
+                  className="block w-full text-sm text-slate-600 mb-2 file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-white file:text-purple-700 hover:file:bg-purple-50" />
+                {signUploadError && <p className="text-red-500 text-xs mb-2">{signUploadError}</p>}
+                <button onClick={handleSignedUpload}
+                  disabled={!signedFile || signUploadStatus === 'uploading'}
+                  className="flex items-center gap-2 text-white text-xs font-semibold py-1.5 px-3 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ background: 'linear-gradient(90deg,#432d85,#703b96)' }}>
+                  {signUploadStatus === 'uploading' ? 'Uploading…' : 'Upload Signed Form'}
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-3">
