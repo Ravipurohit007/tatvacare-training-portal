@@ -34,22 +34,6 @@ export const generateChecklistReport = (submission) => {
   doc.setFont('helvetica', 'normal')
   doc.text(`Generated: ${new Date().toLocaleDateString('en-IN')}`, W - 14, 26, { align: 'right' })
 
-  // Handover status stamp
-  const status = submission.handoverStatus
-  const stampMap = {
-    approved: { color: [21, 128, 61],  label: 'APPROVED' },
-    rejected: { color: [185, 28, 28],  label: 'REJECTED' },
-    pending:  { color: [180, 120, 0],  label: 'PENDING'  },
-  }
-  if (stampMap[status]) {
-    doc.setFillColor(...stampMap[status].color)
-    doc.roundedRect(W - 56, 36, 42, 12, 2, 2, 'F')
-    doc.setTextColor(255, 255, 255)
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'bold')
-    doc.text(stampMap[status].label, W - 35, 44, { align: 'center' })
-  }
-
   // Training Details table
   doc.setTextColor(112, 59, 150)
   doc.setFontSize(12)
@@ -210,7 +194,7 @@ export const generateChecklistReport = (submission) => {
   doc.text('\u2022  Date:', 122, sigInBoxY)
   doc.line(134, sigInBoxY, W - 15, sigInBoxY)
 
-  // Bottom Signatures + Stamp
+  // Bottom Signatures
   const bottomSigY = ackY + ackBoxH + 12
   doc.setDrawColor(148, 163, 184)
   doc.setLineWidth(0.4)
@@ -224,21 +208,7 @@ export const generateChecklistReport = (submission) => {
   doc.text(submission.supportMember || '', 157, bottomSigY + 5,  { align: 'center' })
   doc.text('Support Team',                 157, bottomSigY + 10, { align: 'center' })
 
-  // Stamp
-  const stX = W - 18, stY = bottomSigY + 4, stR = 11
-  doc.setFillColor(255, 255, 255)
-  doc.setDrawColor(67, 45, 133)
-  doc.setLineWidth(1.5)
-  doc.circle(stX, stY, stR, 'FD')
-  doc.setLineWidth(0.5)
-  doc.circle(stX, stY, stR - 2, 'S')
-  doc.setFontSize(4.5)
-  doc.setFont('helvetica', 'bold')
-  doc.setTextColor(67, 45, 133)
-  doc.text('TATVACARE',  stX, stY - 3,   { align: 'center' })
-  doc.text('\u2605',     stX, stY + 0.5, { align: 'center' })
-  doc.text('HEALTHCARE', stX, stY + 3.5, { align: 'center' })
-  doc.text('TECHNOLOGY', stX, stY + 6.5, { align: 'center' })
+
 
   return doc
 }
@@ -371,21 +341,7 @@ export const generateCertificate = (submission) => {
   doc.text('',                         W - 55, bottomSigY + 5,  { align: 'center' })
   doc.text('Head of Sales',            W - 55, bottomSigY + 10, { align: 'center' })
 
-  // TatvaCare Stamp
-  const stX = W - 22, stY = bottomSigY + 2, stR = 14
-  doc.setFillColor(255, 255, 255)
-  doc.setDrawColor(67, 45, 133)
-  doc.setLineWidth(1.5)
-  doc.circle(stX, stY, stR, 'FD')
-  doc.setLineWidth(0.5)
-  doc.circle(stX, stY, stR - 2, 'S')
-  doc.setFontSize(5.5)
-  doc.setFont('helvetica', 'bold')
-  doc.setTextColor(67, 45, 133)
-  doc.text('TATVACARE',   stX, stY - 4,   { align: 'center' })
-  doc.text('\u2605',      stX, stY - 0.5, { align: 'center' })
-  doc.text('HEALTHCARE',  stX, stY + 3,   { align: 'center' })
-  doc.text('TECHNOLOGY',  stX, stY + 7,   { align: 'center' })
+
 
   return doc
 }
