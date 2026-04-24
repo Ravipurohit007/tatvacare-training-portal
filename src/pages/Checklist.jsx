@@ -187,7 +187,7 @@ export default function Checklist() {
       const newRef = doc(collection(db, 'submissions'))
       setSubmissionId(newRef.id)
       setDoc(newRef, submission).catch(async () => {
-        try { await addDocumentREST('submissions', submission) }
+        try { await addDocumentREST(submission) }
         catch (re) { console.error('Firebase REST write failed:', re) }
       })
     } else {

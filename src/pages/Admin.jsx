@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { collection, getDocs, getDocsFromServer, onSnapshot, addDoc, doc, updateDoc } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../lib/firebase'
-import { fetchCollectionREST } from '../lib/firestoreRest'
+import { fetchCollectionREST, addDocumentREST, updateDocumentREST } from '../lib/firestoreRest'
 import { generateChecklistReport, generateCertificate } from '../lib/pdfGenerator'
 
 const ADMIN_PASSWORD = (import.meta.env.VITE_ADMIN_PASSWORD || 'Tatva2024').trim()
@@ -339,8 +339,8 @@ export default function Admin() {
         applyDocs(snap.docs.map(d => ({ id: d.id, ...d.data() })))
       } catch {
         try {
-          // 2. REST API over plain HTTPS (bypasses gRPC block)
-          const docs = await race(fetchCollectionREST('submissions'))
+          // 2. Vercel proxy → REST API (bypasses network block entirely)
+          const docs = await race(fetchCollectionREST())
           applyDocs(docs)
         } catch {
           try {
@@ -371,9 +371,14 @@ export default function Admin() {
     if (idx !== -1) { data[idx] = { ...data[idx], ...update }; localStorage.setItem('tc_submissions', JSON.stringify(data)) }
     setSubmissions((prev) => prev.map((s) => s.submittedAt === submission.submittedAt ? { ...s, ...update } : s))
 
-    // Also push to Firebase in background
-    if (isFirebaseConfigured && db && submission.id && !submission.id.startsWith('local_')) {
-      updateDoc(doc(db, 'submissions', submission.id), update).catch(e => console.error('Review update failed:', e))
+    // Also push to Firebase — try SDK then REST proxy
+    if (submission.id && !submission.id.startsWith('local_')) {
+      if (isFirebaseConfigured && db) {
+        updateDoc(doc(db, 'submissions', submission.id), update)
+          .catch(() => updateDocumentREST(submission.id, update).catch(e => console.error('Review update failed:', e)))
+      } else {
+        updateDocumentREST(submission.id, update).catch(e => console.error('Review update failed:', e))
+      }
     }
   }
 

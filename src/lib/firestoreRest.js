@@ -1,8 +1,5 @@
-// Firestore REST API — works on networks where the gRPC-based SDK is blocked
-
-const base = () =>
-  `https://firestore.googleapis.com/v1/projects/${import.meta.env.VITE_FIREBASE_PROJECT_ID}/databases/(default)/documents`
-const key = () => import.meta.env.VITE_FIREBASE_API_KEY
+// Calls the Vercel proxy at /api/submissions instead of googleapis.com directly.
+// This bypasses network-level blocks on Google's endpoints.
 
 const parseValue = (v) => {
   if ('stringValue'    in v) return v.stringValue
@@ -34,27 +31,38 @@ const toValue = (val) => {
   return { stringValue: String(val) }
 }
 
-const parseDoc = (doc) => {
+export const parseDoc = (doc) => {
   const id = doc.name.split('/').pop()
   const data = {}
   for (const [k, v] of Object.entries(doc.fields || {})) data[k] = parseValue(v)
   return { id, ...data }
 }
 
-export const fetchCollectionREST = async (col) => {
-  const res = await fetch(`${base()}/${col}?pageSize=200&key=${key()}`)
-  if (!res.ok) throw new Error(`REST read ${res.status}`)
+export const fetchCollectionREST = async () => {
+  const res = await fetch('/api/submissions')
+  if (!res.ok) throw new Error(`Proxy ${res.status}`)
   const json = await res.json()
   return (json.documents || []).map(parseDoc)
 }
 
-export const addDocumentREST = async (col, data) => {
+export const addDocumentREST = async (data) => {
   const fields = {}
   for (const [k, v] of Object.entries(data)) fields[k] = toValue(v)
-  const res = await fetch(`${base()}/${col}?key=${key()}`, {
+  const res = await fetch('/api/submissions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ fields }),
   })
-  if (!res.ok) throw new Error(`REST write ${res.status}`)
+  if (!res.ok) throw new Error(`Proxy write ${res.status}`)
+}
+
+export const updateDocumentREST = async (id, update) => {
+  const fields = {}
+  for (const [k, v] of Object.entries(update)) fields[k] = toValue(v)
+  const res = await fetch('/api/submissions', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, fields, updateMask: Object.keys(update) }),
+  })
+  if (!res.ok) throw new Error(`Proxy update ${res.status}`)
 }
