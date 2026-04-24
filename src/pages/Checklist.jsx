@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { collection, doc, setDoc, updateDoc } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../lib/firebase'
+import { addDocumentREST } from '../lib/firestoreRest'
 import { CHECKLIST_ITEMS, STATUS_COLORS } from '../lib/constants'
 import { generateChecklistReport } from '../lib/pdfGenerator'
 
@@ -181,11 +182,14 @@ export default function Checklist() {
     allLocal.unshift({ ...submission, id: localId })
     localStorage.setItem('tc_submissions', JSON.stringify(allLocal))
 
-    // Also save to Firebase in background (for cross-device sync)
+    // Also save to Firebase for cross-device sync — try SDK, fall back to REST
     if (isFirebaseConfigured && db) {
       const newRef = doc(collection(db, 'submissions'))
       setSubmissionId(newRef.id)
-      setDoc(newRef, submission).catch((e) => console.error('Firebase save failed:', e))
+      setDoc(newRef, submission).catch(async () => {
+        try { await addDocumentREST('submissions', submission) }
+        catch (re) { console.error('Firebase REST write failed:', re) }
+      })
     } else {
       setSubmissionId(localId)
     }
