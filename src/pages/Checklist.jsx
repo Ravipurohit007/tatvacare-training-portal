@@ -129,6 +129,7 @@ export default function Checklist() {
   const [signedFile, setSignedFile] = useState(null)
   const [signUploadStatus, setSignUploadStatus] = useState('idle')
   const [signUploadError, setSignUploadError] = useState('')
+  const [syncedToFirebase, setSyncedToFirebase] = useState(false)
 
   const set = (field) => (val) => setForm((f) => ({ ...f, [field]: val }))
 
@@ -187,23 +188,25 @@ export default function Checklist() {
       return
     }
 
-    // Save to Firebase (primary); localStorage as fallback
+    // Save to Firebase
     if (isFirebaseConfigured && db) {
       try {
-        await Promise.race([
-          addDoc(collection(db, 'submissions'), submission).then(ref => setSubmissionId(ref.id)),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
+        const ref = await Promise.race([
+          addDoc(collection(db, 'submissions'), submission),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timed out. Check your internet and try again.')), 15000)),
         ])
+        setSubmissionId(ref.id)
+        setSyncedToFirebase(true)
       } catch (e) {
-        console.error('Firebase save failed, storing locally:', e)
-        const existing = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
-        existing.unshift({ ...submission, id: Date.now().toString() })
-        localStorage.setItem('tc_submissions', JSON.stringify(existing))
+        console.error('Firebase save failed:', e)
+        setError(e.message || 'Failed to sync. Check your internet connection and try again.')
+        setSubmitStatus('error')
+        return
       }
     } else {
-      const existing = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
-      existing.unshift({ ...submission, id: Date.now().toString() })
-      localStorage.setItem('tc_submissions', JSON.stringify(existing))
+      setError('Firebase is not configured. Contact your administrator.')
+      setSubmitStatus('error')
+      return
     }
 
     setSubmitStatus('success')
@@ -220,6 +223,7 @@ export default function Checklist() {
     setSignedFile(null)
     setSignUploadStatus('idle')
     setSignUploadError('')
+    setSyncedToFirebase(false)
   }
 
   const handleSignedUpload = async () => {
@@ -271,6 +275,14 @@ export default function Checklist() {
           </span>
 
           <h2 className="text-xl font-bold text-slate-800 mb-1">Submitted!</h2>
+          {syncedToFirebase && (
+            <div className="flex items-center justify-center gap-1.5 text-green-700 text-xs font-semibold mb-1">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Synced to all devices
+            </div>
+          )}
           <p className="text-slate-500 text-sm mb-1">
             <span className="font-semibold text-slate-700">{form.doctorName}</span> — {form.clinicName}
           </p>
