@@ -12,12 +12,15 @@ const getNextSupportMember = async (db) => {
     try {
       const counterRef = doc(db, 'config', 'roundRobin')
       let assigned = SUPPORT_TEAM[0]
-      await runTransaction(db, async (tx) => {
-        const snap = await tx.get(counterRef)
-        const idx = snap.exists() ? (snap.data().lastIndex ?? 0) : 0
-        assigned = SUPPORT_TEAM[idx % SUPPORT_TEAM.length]
-        tx.set(counterRef, { lastIndex: (idx + 1) % SUPPORT_TEAM.length })
-      })
+      await Promise.race([
+        runTransaction(db, async (tx) => {
+          const snap = await tx.get(counterRef)
+          const idx = snap.exists() ? (snap.data().lastIndex ?? 0) : 0
+          assigned = SUPPORT_TEAM[idx % SUPPORT_TEAM.length]
+          tx.set(counterRef, { lastIndex: (idx + 1) % SUPPORT_TEAM.length })
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('rr timeout')), 5000))
+      ])
       return assigned
     } catch (_) {}
   }
@@ -191,10 +194,7 @@ export default function Checklist() {
     // Save to Firebase
     if (isFirebaseConfigured && db) {
       try {
-        const ref = await Promise.race([
-          addDoc(collection(db, 'submissions'), submission),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timed out. Check your internet and try again.')), 15000)),
-        ])
+        const ref = await addDoc(collection(db, 'submissions'), submission)
         setSubmissionId(ref.id)
         setSyncedToFirebase(true)
       } catch (e) {
