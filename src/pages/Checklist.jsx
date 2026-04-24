@@ -194,12 +194,18 @@ export default function Checklist() {
     // Save to Firebase
     if (isFirebaseConfigured && db) {
       try {
-        const ref = await addDoc(collection(db, 'submissions'), submission)
+        const ref = await Promise.race([
+          addDoc(collection(db, 'submissions'), submission),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 30000)),
+        ])
         setSubmissionId(ref.id)
         setSyncedToFirebase(true)
       } catch (e) {
         console.error('Firebase save failed:', e)
-        setError(e.message || 'Failed to sync. Check your internet connection and try again.')
+        const msg = e.message === 'TIMEOUT'
+          ? 'Firebase not reachable from this device. Error: TIMEOUT. Please check admin panel — does it show 🟢 or 🔴?'
+          : `Firebase error: ${e.code || e.message}`
+        setError(msg)
         setSubmitStatus('error')
         return
       }
