@@ -195,24 +195,19 @@ export const generateChecklistReport = (submission) => {
   doc.text('\u2022  Date:', 122, sigInBoxY)
   doc.line(134, sigInBoxY, W - 15, sigInBoxY)
 
-  // Bottom Signatures (BDM | Area Manager | Head of Product Support | Head of Sales)
-  const bottomSigY = ackY + ackBoxH + 10
+  // Bottom Signatures (BDM | Area Manager)
+  const bottomSigY = ackY + ackBoxH + 12
   doc.setDrawColor(148, 163, 184)
   doc.setLineWidth(0.4)
-  doc.line(17,  bottomSigY, 55,  bottomSigY)
-  doc.line(63,  bottomSigY, 101, bottomSigY)
-  doc.line(109, bottomSigY, 147, bottomSigY)
-  doc.line(155, bottomSigY, 193, bottomSigY)
-  doc.setFontSize(7.5)
+  doc.line(20,  bottomSigY, 85,  bottomSigY)
+  doc.line(125, bottomSigY, 190, bottomSigY)
+  doc.setFontSize(9)
   doc.setTextColor(71, 85, 105)
   doc.setFont('helvetica', 'normal')
-  doc.text(submission.bdmName || '', 36,  bottomSigY + 4,   { align: 'center' })
-  doc.text(submission.amName  || '', 82,  bottomSigY + 4,   { align: 'center' })
-  doc.text('BDM',                    36,  bottomSigY + 8.5, { align: 'center' })
-  doc.text('Area Manager',           82,  bottomSigY + 8.5, { align: 'center' })
-  doc.text('Head of Product',        128, bottomSigY + 7,   { align: 'center' })
-  doc.text('Support',                128, bottomSigY + 11,  { align: 'center' })
-  doc.text('Head of Sales',          174, bottomSigY + 8.5, { align: 'center' })
+  doc.text(submission.bdmName || '', 52,  bottomSigY + 5,  { align: 'center' })
+  doc.text('BDM',                    52,  bottomSigY + 10, { align: 'center' })
+  doc.text(submission.amName  || '', 157, bottomSigY + 5,  { align: 'center' })
+  doc.text('Area Manager',           157, bottomSigY + 10, { align: 'center' })
 
 
 
