@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { collection, addDoc, doc, updateDoc } from 'firebase/firestore'
+import { collection, doc, setDoc, updateDoc } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../lib/firebase'
 import { CHECKLIST_ITEMS, STATUS_COLORS } from '../lib/constants'
 import { generateChecklistReport } from '../lib/pdfGenerator'
@@ -175,24 +175,12 @@ export default function Checklist() {
       return
     }
 
-    // Save to Firebase
+    // Save to Firebase — generate ID client-side, write in background
     if (isFirebaseConfigured && db) {
-      try {
-        const ref = await Promise.race([
-          addDoc(collection(db, 'submissions'), submission),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 30000)),
-        ])
-        setSubmissionId(ref.id)
-        setSyncedToFirebase(true)
-      } catch (e) {
-        console.error('Firebase save failed:', e)
-        const msg = e.message === 'TIMEOUT'
-          ? 'Firebase not reachable from this device. Error: TIMEOUT. Please check admin panel — does it show 🟢 or 🔴?'
-          : `Firebase error: ${e.code || e.message}`
-        setError(msg)
-        setSubmitStatus('error')
-        return
-      }
+      const newRef = doc(collection(db, 'submissions'))
+      setSubmissionId(newRef.id)
+      setDoc(newRef, submission).catch((e) => console.error('Firebase save failed:', e))
+      setSyncedToFirebase(true)
     } else {
       setError('Firebase is not configured. Contact your administrator.')
       setSubmitStatus('error')
