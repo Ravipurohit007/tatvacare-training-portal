@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { collection, query, orderBy, onSnapshot, addDoc, doc, updateDoc } from 'firebase/firestore'
+import { collection, getDocs, onSnapshot, addDoc, doc, updateDoc } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../lib/firebase'
 import { generateChecklistReport, generateCertificate } from '../lib/pdfGenerator'
 
@@ -305,34 +305,29 @@ export default function Admin() {
   const [firebaseReadError, setFirebaseReadError] = useState('')
   const [dataSource, setDataSource] = useState('loading')
 
+  const fetchSubmissions = async () => {
+    if (!isFirebaseConfigured || !db) { setDataSource('local'); setLoading(false); return }
+    setLoading(true)
+    try {
+      const snap = await getDocs(collection(db, 'submissions'))
+      const data = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''))
+      setSubmissions(data)
+      setDataSource('firebase')
+    } catch (e) {
+      console.error('Firestore read error:', e)
+      setFirebaseReadError(e.message || e.code)
+      setDataSource('local')
+    }
+    setLoading(false)
+  }
+
   useEffect(() => {
     if (!authed) return
-    if (isFirebaseConfigured && db) {
-      const q = collection(db, 'submissions')
-      const unsub = onSnapshot(q,
-        (snap) => {
-          const firebaseData = snap.docs
-            .map((d) => ({ id: d.id, ...d.data() }))
-            .sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''))
-          setSubmissions(firebaseData)
-          setDataSource('firebase')
-          setLoading(false)
-          localStorage.removeItem('tc_submissions')
-        },
-        (err) => {
-          console.error('Firestore read error:', err.code, err.message)
-          setFirebaseReadError(err.message || err.code)
-          setDataSource('local')
-          setSubmissions([])
-          setLoading(false)
-        }
-      )
-      return unsub
-    } else {
-      setDataSource('local')
-      setSubmissions([])
-      setLoading(false)
-    }
+    fetchSubmissions()
+    const interval = setInterval(fetchSubmissions, 10000)
+    return () => clearInterval(interval)
   }, [authed])
 
   const handleReview = async (submission, decision, comment) => {
