@@ -318,24 +318,38 @@ export default function Admin() {
       const localData = [...localRaw].sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''))
       if (!cancelled) { setSubmissions(localData); setDataSource('local'); setLoading(false) }
 
-      // Step 2: fetch from Firebase server (bypass cache), 15-second timeout
+      // Step 2: try Firebase server, fall back to Firestore cache
       if (!isFirebaseConfigured || !db) return
       if (!cancelled) setSyncing(true)
-      try {
-        const snap = await Promise.race([
-          getDocsFromServer(collection(db, 'submissions')),
-          new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 15000))
-        ])
+
+      const applyFirebaseSnap = (snap) => {
         if (cancelled) return
         const fbData = snap.docs.map(d => ({ id: d.id, ...d.data() }))
           .sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''))
         const fbTimes = new Set(fbData.map(d => d.submittedAt))
         const merged = [...fbData, ...localData.filter(s => !fbTimes.has(s.submittedAt))]
           .sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''))
-        if (!cancelled) { setSubmissions(merged); setDataSource('firebase'); setFirebaseReadError('') }
-      } catch (e) {
-        if (cancelled) return
-        setFirebaseReadError(e.message === 'timeout' ? 'Server not responding — showing local data' : (e.message || e.code))
+        setSubmissions(merged); setDataSource('firebase'); setFirebaseReadError('')
+      }
+
+      try {
+        // Try live server first (10-second timeout)
+        const snap = await Promise.race([
+          getDocsFromServer(collection(db, 'submissions')),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000))
+        ])
+        applyFirebaseSnap(snap)
+      } catch {
+        // Server unreachable — fall back to Firestore local cache
+        try {
+          const snap = await getDocs(collection(db, 'submissions'))
+          if (!cancelled) {
+            applyFirebaseSnap(snap)
+            setFirebaseReadError('Showing cached data — server unreachable')
+          }
+        } catch (cacheErr) {
+          if (!cancelled) setFirebaseReadError(cacheErr.message || cacheErr.code)
+        }
       } finally {
         if (!cancelled) setSyncing(false)
       }
