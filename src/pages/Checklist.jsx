@@ -182,17 +182,10 @@ export default function Checklist() {
     allLocal.unshift({ ...submission, id: localId })
     localStorage.setItem('tc_submissions', JSON.stringify(allLocal))
 
-    // Also save to Firebase for cross-device sync — try SDK, fall back to REST
-    if (isFirebaseConfigured && db) {
-      const newRef = doc(collection(db, 'submissions'))
-      setSubmissionId(newRef.id)
-      setDoc(newRef, submission).catch(async () => {
-        try { await addDocumentREST(submission) }
-        catch (re) { console.error('Firebase REST write failed:', re) }
-      })
-    } else {
-      setSubmissionId(localId)
-    }
+    // Write to Firebase via Vercel proxy — reliable on any network
+    addDocumentREST(submission)
+      .then(id => { if (id) setSubmissionId(id) })
+      .catch(e => console.error('Firebase write failed:', e))
     setSyncedToFirebase(true)
     setSubmitStatus('success')
   }

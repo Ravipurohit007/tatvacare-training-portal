@@ -54,6 +54,8 @@ export const addDocumentREST = async (data) => {
     body: JSON.stringify({ fields }),
   })
   if (!res.ok) throw new Error(`Proxy write ${res.status}`)
+  const json = await res.json()
+  return json.name ? json.name.split('/').pop() : null
 }
 
 export const updateDocumentREST = async (id, update) => {
