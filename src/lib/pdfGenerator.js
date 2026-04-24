@@ -19,7 +19,7 @@ export const generateChecklistReport = (submission) => {
 
   // Header bar
   doc.setFillColor(67, 45, 133)
-  doc.rect(0, 0, W, 32, 'F')
+  doc.rect(0, 0, W, 38, 'F')
   doc.setTextColor(255, 255, 255)
   doc.setFontSize(20)
   doc.setFont('helvetica', 'bold')
@@ -33,6 +33,8 @@ export const generateChecklistReport = (submission) => {
   doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
   doc.text(`Generated: ${new Date().toLocaleDateString('en-IN')}`, W - 14, 26, { align: 'right' })
+  doc.setFontSize(7.5)
+  doc.text('Support: +91-9974042363  |  support@tatvacare.in', W / 2, 35, { align: 'center' })
 
   // Training Details table
   doc.setTextColor(112, 59, 150)
@@ -62,7 +64,6 @@ export const generateChecklistReport = (submission) => {
       ['BDM Name',                  submission.bdmName || '—'],
       ['BDM Phone',                 submission.bdmPhone || '—'],
       ['AM Name',                   submission.amName || '—'],
-      ['Support Team Member',       submission.supportMember || '—'],
       ['Device Details',            submission.deviceDetails || '—'],
       ['Internet Type',             submission.internetType || '—'],
     ],
@@ -194,19 +195,24 @@ export const generateChecklistReport = (submission) => {
   doc.text('\u2022  Date:', 122, sigInBoxY)
   doc.line(134, sigInBoxY, W - 15, sigInBoxY)
 
-  // Bottom Signatures
-  const bottomSigY = ackY + ackBoxH + 12
+  // Bottom Signatures (BDM | Area Manager | Head of Product Support | Head of Sales)
+  const bottomSigY = ackY + ackBoxH + 10
   doc.setDrawColor(148, 163, 184)
   doc.setLineWidth(0.4)
-  doc.line(20, bottomSigY, 85, bottomSigY)
-  doc.line(125, bottomSigY, 190, bottomSigY)
-  doc.setFontSize(9)
+  doc.line(17,  bottomSigY, 55,  bottomSigY)
+  doc.line(63,  bottomSigY, 101, bottomSigY)
+  doc.line(109, bottomSigY, 147, bottomSigY)
+  doc.line(155, bottomSigY, 193, bottomSigY)
+  doc.setFontSize(7.5)
   doc.setTextColor(71, 85, 105)
   doc.setFont('helvetica', 'normal')
-  doc.text(submission.bdmName || '',       52,  bottomSigY + 5,  { align: 'center' })
-  doc.text('BDM',                          52,  bottomSigY + 10, { align: 'center' })
-  doc.text(submission.supportMember || '', 157, bottomSigY + 5,  { align: 'center' })
-  doc.text('Support Team',                 157, bottomSigY + 10, { align: 'center' })
+  doc.text(submission.bdmName || '', 36,  bottomSigY + 4,   { align: 'center' })
+  doc.text(submission.amName  || '', 82,  bottomSigY + 4,   { align: 'center' })
+  doc.text('BDM',                    36,  bottomSigY + 8.5, { align: 'center' })
+  doc.text('Area Manager',           82,  bottomSigY + 8.5, { align: 'center' })
+  doc.text('Head of Product',        128, bottomSigY + 7,   { align: 'center' })
+  doc.text('Support',                128, bottomSigY + 11,  { align: 'center' })
+  doc.text('Head of Sales',          174, bottomSigY + 8.5, { align: 'center' })
 
 
 
@@ -327,19 +333,19 @@ export const generateCertificate = (submission) => {
 
   doc.setDrawColor(148, 163, 184)
   doc.setLineWidth(0.4)
-  doc.line(20, bottomSigY, 85, bottomSigY)
-  doc.line(W / 2 - 38, bottomSigY, W / 2 + 38, bottomSigY)
-  doc.line(W - 90, bottomSigY, W - 20, bottomSigY)
+  doc.line(W / 3 - 40, bottomSigY, W / 3 + 40, bottomSigY)
+  doc.line(2 * W / 3 - 40, bottomSigY, 2 * W / 3 + 40, bottomSigY)
 
   doc.setFontSize(8.5)
   doc.setTextColor(71, 85, 105)
   doc.setFont('helvetica', 'normal')
-  doc.text(submission.bdmName || '',   52,     bottomSigY + 5,  { align: 'center' })
-  doc.text('BDM / Trainer',            52,     bottomSigY + 10, { align: 'center' })
-  doc.text('',                         W / 2,  bottomSigY + 5,  { align: 'center' })
-  doc.text('Head of Product Support',  W / 2,  bottomSigY + 10, { align: 'center' })
-  doc.text('',                         W - 55, bottomSigY + 5,  { align: 'center' })
-  doc.text('Head of Sales',            W - 55, bottomSigY + 10, { align: 'center' })
+  doc.text('Head of Product Support', W / 3,     bottomSigY + 10, { align: 'center' })
+  doc.text('Head of Sales',           2 * W / 3, bottomSigY + 10, { align: 'center' })
+
+  // Contact info footer
+  doc.setFontSize(8)
+  doc.setTextColor(112, 59, 150)
+  doc.text('Support: +91-9974042363  |  support@tatvacare.in', W / 2, H - 18, { align: 'center' })
 
 
 
