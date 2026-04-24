@@ -1,29 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { collection, addDoc, doc, updateDoc, runTransaction } from 'firebase/firestore'
+import { collection, addDoc, doc, updateDoc } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../lib/firebase'
 import { CHECKLIST_ITEMS, STATUS_COLORS } from '../lib/constants'
 import { generateChecklistReport } from '../lib/pdfGenerator'
 
 const SUPPORT_TEAM = ['Dilshab', 'Sukhanya', 'Tasleem', 'Ghousiya']
 
-const getNextSupportMember = async (db) => {
-  if (db) {
-    try {
-      const counterRef = doc(db, 'config', 'roundRobin')
-      let assigned = SUPPORT_TEAM[0]
-      await Promise.race([
-        runTransaction(db, async (tx) => {
-          const snap = await tx.get(counterRef)
-          const idx = snap.exists() ? (snap.data().lastIndex ?? 0) : 0
-          assigned = SUPPORT_TEAM[idx % SUPPORT_TEAM.length]
-          tx.set(counterRef, { lastIndex: (idx + 1) % SUPPORT_TEAM.length })
-        }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('rr timeout')), 5000))
-      ])
-      return assigned
-    } catch (_) {}
-  }
+const getNextSupportMember = () => {
   const idx = parseInt(localStorage.getItem('tc_rr_index') || '0')
   const member = SUPPORT_TEAM[idx % SUPPORT_TEAM.length]
   localStorage.setItem('tc_rr_index', String((idx + 1) % SUPPORT_TEAM.length))
@@ -170,7 +154,7 @@ export default function Checklist() {
     setSubmitStatus('submitting')
     setError('')
 
-    const supportMember = await getNextSupportMember(db)
+    const supportMember = getNextSupportMember()
     const submission = {
       ...form,
       supportMember,
