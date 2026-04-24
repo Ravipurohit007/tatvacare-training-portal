@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { collection, getDocs, doc, updateDoc, query, orderBy } from 'firebase/firestore'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { db, storage, isFirebaseConfigured } from '../lib/firebase'
+import { db, isFirebaseConfigured } from '../lib/firebase'
 
 const SOP_URL = import.meta.env.VITE_SOP_URL || ''
 
@@ -54,17 +53,28 @@ export default function Home() {
 
   const handleUpload = async () => {
     if (!uploadFile || !selected) return
+    if (uploadFile.size > 900000) {
+      setUploadError('File too large. Please use an image or PDF under 900KB.')
+      setUploadStatus('error')
+      return
+    }
     setUploadStatus('uploading')
-    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Upload timed out. Check Firebase Storage rules.')), 20000))
     try {
-      const storageRef = ref(storage, `signed-checklists/${selected.id}_${Date.now()}_${uploadFile.name}`)
-      await Promise.race([uploadBytes(storageRef, uploadFile), timeout])
-      const url = await getDownloadURL(storageRef)
-      await updateDoc(doc(db, 'submissions', selected.id), { signedChecklistUrl: url })
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result)
+        reader.onerror = reject
+        reader.readAsDataURL(uploadFile)
+      })
+      await updateDoc(doc(db, 'submissions', selected.id), {
+        signedChecklistFile: base64,
+        signedChecklistName: uploadFile.name,
+        signedChecklistUploadedAt: new Date().toISOString(),
+      })
       setUploadStatus('done')
     } catch (e) {
       console.error('Upload error:', e)
-      setUploadError(e.message || 'Upload failed. Check Firebase Storage rules.')
+      setUploadError(e.message || 'Upload failed. Please try again.')
       setUploadStatus('error')
     }
   }
