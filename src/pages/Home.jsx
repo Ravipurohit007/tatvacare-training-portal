@@ -1,10 +1,20 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { isFirebaseConfigured } from '../lib/firebase'
+import { collection, getDocs, doc, updateDoc, query, orderBy } from 'firebase/firestore'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { db, storage, isFirebaseConfigured } from '../lib/firebase'
 
 const SOP_URL = import.meta.env.VITE_SOP_URL || ''
 
 export default function Home() {
   const navigate = useNavigate()
+  const [showUpload, setShowUpload] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [submissions, setSubmissions] = useState([])
+  const [loadingSearch, setLoadingSearch] = useState(false)
+  const [selected, setSelected] = useState(null)
+  const [uploadFile, setUploadFile] = useState(null)
+  const [uploadStatus, setUploadStatus] = useState('idle')
 
   const handleSOP = () => {
     if (SOP_URL) {
@@ -13,6 +23,51 @@ export default function Home() {
       alert('SOP URL not configured.\n\nAdd VITE_SOP_URL to your .env file to link your SOP document.')
     }
   }
+
+  const handleOpenUpload = async () => {
+    setShowUpload(true)
+    setLoadingSearch(true)
+    setSearchQuery('')
+    setSelected(null)
+    setUploadFile(null)
+    setUploadStatus('idle')
+    if (isFirebaseConfigured && db) {
+      try {
+        const snap = await getDocs(query(collection(db, 'submissions'), orderBy('submittedAt', 'desc')))
+        setSubmissions(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      } catch (e) {
+        console.error(e)
+      }
+    }
+    setLoadingSearch(false)
+  }
+
+  const handleClose = () => {
+    setShowUpload(false)
+    setSearchQuery('')
+    setSelected(null)
+    setUploadFile(null)
+    setUploadStatus('idle')
+  }
+
+  const handleUpload = async () => {
+    if (!uploadFile || !selected) return
+    setUploadStatus('uploading')
+    try {
+      const storageRef = ref(storage, `signed-checklists/${selected.id}_${Date.now()}_${uploadFile.name}`)
+      await uploadBytes(storageRef, uploadFile)
+      const url = await getDownloadURL(storageRef)
+      await updateDoc(doc(db, 'submissions', selected.id), { signedChecklistUrl: url })
+      setUploadStatus('done')
+    } catch (e) {
+      console.error(e)
+      setUploadStatus('error')
+    }
+  }
+
+  const filtered = submissions.filter(s =>
+    s.doctorName?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #f5eefa 0%, #f8f4ff 50%, #eef2ff 100%)' }}>
@@ -137,6 +192,145 @@ export default function Home() {
               <p className="text-slate-500 text-xs mt-0.5">Click Submission</p>
             </div>
           </div>
+        </div>
+
+        {/* Upload Signed Checklist */}
+        <div className="mt-6">
+          {!showUpload ? (
+            <button
+              onClick={handleOpenUpload}
+              className="w-full card p-5 text-left hover:shadow-md transition-all flex items-center justify-between group"
+              style={{ borderColor: '#e9d8f5' }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = '#b87fdc'}
+              onMouseLeave={e => e.currentTarget.style.borderColor = '#e9d8f5'}
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: '#f5eefa' }}>
+                  <svg className="w-6 h-6" style={{ color: '#703b96' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="font-bold text-slate-800">Upload Signed Checklist</p>
+                  <p className="text-slate-500 text-sm">Search a doctor and upload their signed checklist form</p>
+                </div>
+              </div>
+              <svg className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          ) : (
+            <div className="card p-6">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: '#f5eefa' }}>
+                    <svg className="w-5 h-5" style={{ color: '#703b96' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                  </div>
+                  <h3 className="font-bold text-slate-800">Upload Signed Checklist</h3>
+                </div>
+                <button onClick={handleClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Search */}
+              <div className="relative mb-3">
+                <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  className="form-input pl-9"
+                  placeholder="Search doctor name…"
+                  value={searchQuery}
+                  onChange={e => { setSearchQuery(e.target.value); setSelected(null); setUploadStatus('idle') }}
+                  autoFocus
+                />
+              </div>
+
+              {/* Results */}
+              {loadingSearch ? (
+                <p className="text-slate-400 text-sm text-center py-4">Loading submissions…</p>
+              ) : searchQuery.length > 0 && (
+                <div className="max-h-48 overflow-y-auto rounded-lg border border-slate-200 mb-4">
+                  {filtered.length === 0 ? (
+                    <p className="text-slate-400 text-sm text-center py-4">No doctor found</p>
+                  ) : (
+                    filtered.slice(0, 10).map(s => (
+                      <button
+                        key={s.id}
+                        onClick={() => { setSelected(s); setUploadFile(null); setUploadStatus('idle') }}
+                        className={`w-full text-left px-4 py-3 border-b border-slate-100 last:border-0 transition-colors ${selected?.id === s.id ? 'bg-purple-50' : 'hover:bg-slate-50'}`}
+                      >
+                        <p className="font-semibold text-slate-800 text-sm">{s.doctorName}</p>
+                        <p className="text-xs text-slate-400">{s.clinicName} · {s.trainingDate || '—'}</p>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* Upload area */}
+              {selected && (
+                <div className="rounded-lg p-4 mt-2" style={{ background: '#f5eefa', border: '1px solid #d3b2eb' }}>
+                  <p className="text-sm font-semibold mb-3" style={{ color: '#432d85' }}>
+                    {selected.doctorName} — {selected.clinicName}
+                  </p>
+
+                  {uploadStatus === 'done' ? (
+                    <div className="flex items-center gap-2 text-green-700 text-sm font-semibold">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Signed checklist uploaded successfully!
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={e => setUploadFile(e.target.files[0])}
+                        className="block w-full text-sm text-slate-600 mb-3 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-white file:text-purple-700 hover:file:bg-purple-50"
+                      />
+                      {uploadStatus === 'error' && (
+                        <p className="text-red-500 text-xs mb-2">Upload failed. Please try again.</p>
+                      )}
+                      <button
+                        onClick={handleUpload}
+                        disabled={!uploadFile || uploadStatus === 'uploading'}
+                        className="flex items-center gap-2 text-white text-sm font-semibold py-2 px-4 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        style={{ background: 'linear-gradient(90deg,#432d85,#703b96)' }}
+                      >
+                        {uploadStatus === 'uploading' ? (
+                          <>
+                            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                            </svg>
+                            Uploading…
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                            Upload Signed Checklist
+                          </>
+                        )}
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
