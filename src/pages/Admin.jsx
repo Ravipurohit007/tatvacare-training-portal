@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { collection, getDocs, onSnapshot, addDoc, doc, updateDoc } from 'firebase/firestore'
+import { collection, getDocs, getDocsFromServer, onSnapshot, addDoc, doc, updateDoc } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../lib/firebase'
 import { generateChecklistReport, generateCertificate } from '../lib/pdfGenerator'
 
@@ -306,23 +306,25 @@ export default function Admin() {
   const [dataSource, setDataSource] = useState('loading')
 
   const [refreshTick, setRefreshTick] = useState(0)
+  const [syncing, setSyncing] = useState(false)
 
   useEffect(() => {
     if (!authed) return
     let cancelled = false
 
     const loadData = async () => {
-      // Step 1: show localStorage instantly (no spinner wait)
+      // Step 1: show localStorage instantly
       const localRaw = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
       const localData = [...localRaw].sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''))
       if (!cancelled) { setSubmissions(localData); setDataSource('local'); setLoading(false) }
 
-      // Step 2: try Firebase with 8-second timeout, merge on top
+      // Step 2: fetch from Firebase server (bypass cache), 15-second timeout
       if (!isFirebaseConfigured || !db) return
+      if (!cancelled) setSyncing(true)
       try {
         const snap = await Promise.race([
-          getDocs(collection(db, 'submissions')),
-          new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))
+          getDocsFromServer(collection(db, 'submissions')),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 15000))
         ])
         if (cancelled) return
         const fbData = snap.docs.map(d => ({ id: d.id, ...d.data() }))
@@ -333,7 +335,9 @@ export default function Admin() {
         if (!cancelled) { setSubmissions(merged); setDataSource('firebase'); setFirebaseReadError('') }
       } catch (e) {
         if (cancelled) return
-        if (e.message !== 'timeout') setFirebaseReadError(e.message || e.code)
+        setFirebaseReadError(e.message === 'timeout' ? 'Server not responding — showing local data' : (e.message || e.code))
+      } finally {
+        if (!cancelled) setSyncing(false)
       }
     }
 
@@ -394,13 +398,19 @@ export default function Admin() {
             </button>
             <div>
               <h1 className="text-white font-bold text-lg">Admin Panel</h1>
-              <p className="text-purple-200 text-xs">{dataSource === 'firebase' ? '🟢 All devices synced' : dataSource === 'local' ? '🟡 Showing local data' : '⏳ Loading…'}</p>
+              <p className="text-purple-200 text-xs">
+              {syncing
+                ? '🔄 Syncing with server…'
+                : dataSource === 'firebase'
+                  ? '🟢 All devices synced'
+                  : '🟡 Local data — tap ↺ to sync'}
+            </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setRefreshTick(t => t + 1)} title="Refresh"
-              className="text-purple-200 hover:text-white transition-colors p-1 rounded">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button onClick={() => setRefreshTick(t => t + 1)} title="Sync from server" disabled={syncing}
+              className="text-purple-200 hover:text-white transition-colors p-1 rounded disabled:opacity-50">
+              <svg className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
