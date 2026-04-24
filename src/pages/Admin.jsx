@@ -305,43 +305,55 @@ export default function Admin() {
   const [firebaseReadError, setFirebaseReadError] = useState('')
   const [dataSource, setDataSource] = useState('loading')
 
-  const fetchSubmissions = async () => {
-    if (!isFirebaseConfigured || !db) { setDataSource('local'); setLoading(false); return }
-    setLoading(true)
-    try {
-      const snap = await getDocs(collection(db, 'submissions'))
-      const data = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
-        .sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''))
-      setSubmissions(data)
-      setDataSource('firebase')
-    } catch (e) {
-      console.error('Firestore read error:', e)
-      setFirebaseReadError(e.message || e.code)
-      setDataSource('local')
-    }
-    setLoading(false)
-  }
+  const [refreshTick, setRefreshTick] = useState(0)
 
   useEffect(() => {
     if (!authed) return
-    fetchSubmissions()
-    const interval = setInterval(fetchSubmissions, 10000)
-    return () => clearInterval(interval)
-  }, [authed])
+    let cancelled = false
+
+    const loadData = async () => {
+      // Step 1: show localStorage instantly (no spinner wait)
+      const localRaw = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
+      const localData = [...localRaw].sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''))
+      if (!cancelled) { setSubmissions(localData); setDataSource('local'); setLoading(false) }
+
+      // Step 2: try Firebase with 8-second timeout, merge on top
+      if (!isFirebaseConfigured || !db) return
+      try {
+        const snap = await Promise.race([
+          getDocs(collection(db, 'submissions')),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))
+        ])
+        if (cancelled) return
+        const fbData = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''))
+        const fbTimes = new Set(fbData.map(d => d.submittedAt))
+        const merged = [...fbData, ...localData.filter(s => !fbTimes.has(s.submittedAt))]
+          .sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''))
+        if (!cancelled) { setSubmissions(merged); setDataSource('firebase'); setFirebaseReadError('') }
+      } catch (e) {
+        if (cancelled) return
+        if (e.message !== 'timeout') setFirebaseReadError(e.message || e.code)
+      }
+    }
+
+    loadData()
+    const interval = setInterval(loadData, 15000)
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [authed, refreshTick])
 
   const handleReview = async (submission, decision, comment) => {
     const update = { handoverStatus: decision, supportComment: comment, reviewedAt: new Date().toISOString() }
-    if (isFirebaseConfigured && db && submission.id) {
-      try { await updateDoc(doc(db, 'submissions', submission.id), update) } catch (e) {
-        console.error('Review update failed:', e)
-      }
-    } else {
-      // localStorage fallback
-      const data = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
-      const idx = data.findIndex((s) => s.submittedAt === submission.submittedAt)
-      if (idx !== -1) { data[idx] = { ...data[idx], ...update }; localStorage.setItem('tc_submissions', JSON.stringify(data)) }
-      setSubmissions((prev) => prev.map((s) => s.submittedAt === submission.submittedAt ? { ...s, ...update } : s))
+
+    // Update localStorage and in-memory state immediately
+    const data = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
+    const idx = data.findIndex((s) => s.submittedAt === submission.submittedAt)
+    if (idx !== -1) { data[idx] = { ...data[idx], ...update }; localStorage.setItem('tc_submissions', JSON.stringify(data)) }
+    setSubmissions((prev) => prev.map((s) => s.submittedAt === submission.submittedAt ? { ...s, ...update } : s))
+
+    // Also push to Firebase in background
+    if (isFirebaseConfigured && db && submission.id && !submission.id.startsWith('local_')) {
+      updateDoc(doc(db, 'submissions', submission.id), update).catch(e => console.error('Review update failed:', e))
     }
   }
 
@@ -382,12 +394,21 @@ export default function Admin() {
             </button>
             <div>
               <h1 className="text-white font-bold text-lg">Admin Panel</h1>
-              <p className="text-purple-200 text-xs">{dataSource === 'firebase' ? '🟢 Live Firebase data' : dataSource === 'local' ? '🔴 Firebase not connected' : 'Connecting…'}</p>
+              <p className="text-purple-200 text-xs">{dataSource === 'firebase' ? '🟢 All devices synced' : dataSource === 'local' ? '🟡 Showing local data' : '⏳ Loading…'}</p>
             </div>
           </div>
-          <span className="bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full">
-            {submissions.length} total
-          </span>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setRefreshTick(t => t + 1)} title="Refresh"
+              className="text-purple-200 hover:text-white transition-colors p-1 rounded">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <span className="bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full">
+              {submissions.length} total
+            </span>
+          </div>
         </div>
       </div>
 
