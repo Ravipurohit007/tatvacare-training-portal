@@ -166,8 +166,8 @@ export default function Checklist() {
 
     // Generate checklist report PDF
     try {
-      const doc = generateChecklistReport(submission)
-      setPdfUrl(URL.createObjectURL(doc.output('blob')))
+      const pdfDoc = generateChecklistReport(submission)
+      setPdfUrl(URL.createObjectURL(pdfDoc.output('blob')))
     } catch (pdfErr) {
       console.error('PDF error:', pdfErr)
       setError('Failed to generate PDF. Please try again.')
