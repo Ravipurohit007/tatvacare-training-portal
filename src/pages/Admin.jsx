@@ -313,11 +313,17 @@ export default function Admin() {
     if (!authed) return
     let cancelled = false
 
+    let firstLoad = true
+
     const loadData = async () => {
-      // Step 1: show localStorage instantly
       const localRaw = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
       const localData = [...localRaw].sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''))
-      if (!cancelled) { setSubmissions(localData); setDataSource('local'); setLoading(false) }
+
+      // Only reset to local data on first load — polls update silently
+      if (firstLoad && !cancelled) {
+        setSubmissions(localData); setDataSource('local'); setLoading(false)
+        firstLoad = false
+      }
 
       // Step 2: try SDK → REST API → SDK cache (in order)
       if (!isFirebaseConfigured || !db) return
@@ -358,7 +364,7 @@ export default function Admin() {
     }
 
     loadData()
-    const interval = setInterval(loadData, 15000)
+    const interval = setInterval(loadData, 180000)
     return () => { cancelled = true; clearInterval(interval) }
   }, [authed, refreshTick])
 
