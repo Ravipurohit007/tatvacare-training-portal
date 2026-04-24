@@ -303,48 +303,34 @@ export default function Admin() {
   const [selected, setSelected] = useState(null)
   const [reviewing, setReviewing] = useState(null)
   const [firebaseReadError, setFirebaseReadError] = useState('')
+  const [dataSource, setDataSource] = useState('loading')
 
   useEffect(() => {
     if (!authed) return
     if (isFirebaseConfigured && db) {
-      let migrationDone = false
-      const q = query(collection(db, 'submissions'), orderBy('submittedAt', 'desc'))
+      const q = collection(db, 'submissions')
       const unsub = onSnapshot(q,
-        async (snap) => {
-          const firebaseData = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
-          if (!migrationDone) {
-            migrationDone = true
-            const localData = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
-            if (localData.length > 0) {
-              const fbTimes = new Set(firebaseData.map((s) => s.submittedAt))
-              const missing = localData.filter((s) => s.submittedAt && !fbTimes.has(s.submittedAt))
-              if (missing.length > 0) {
-                for (const entry of missing) {
-                  const { id: _id, ...data } = entry
-                  try { await addDoc(collection(db, 'submissions'), data) } catch (_) {}
-                }
-                return
-              }
-            }
-            localStorage.removeItem('tc_submissions')
-          }
+        (snap) => {
+          const firebaseData = snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''))
           setSubmissions(firebaseData)
+          setDataSource('firebase')
           setLoading(false)
+          localStorage.removeItem('tc_submissions')
         },
         (err) => {
-          console.error('Firestore read error:', err.code)
-          setFirebaseReadError(err.code === 'permission-denied'
-            ? 'Firestore read permission denied. Update rules to: allow read, write: if true;'
-            : err.message)
-          const data = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
-          setSubmissions(data)
+          console.error('Firestore read error:', err.code, err.message)
+          setFirebaseReadError(err.message || err.code)
+          setDataSource('local')
+          setSubmissions([])
           setLoading(false)
         }
       )
       return unsub
     } else {
-      const data = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
-      setSubmissions(data)
+      setDataSource('local')
+      setSubmissions([])
       setLoading(false)
     }
   }, [authed])
@@ -401,7 +387,7 @@ export default function Admin() {
             </button>
             <div>
               <h1 className="text-white font-bold text-lg">Admin Panel</h1>
-              <p className="text-purple-200 text-xs">{isFirebaseConfigured ? 'Live Firebase data' : 'Demo — localStorage data'}</p>
+              <p className="text-purple-200 text-xs">{dataSource === 'firebase' ? '🟢 Live Firebase data' : dataSource === 'local' ? '🔴 Firebase not connected' : 'Connecting…'}</p>
             </div>
           </div>
           <span className="bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full">
