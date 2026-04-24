@@ -475,7 +475,7 @@ export default function Admin() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
-                    {['#', 'Doctor', 'Clinic', 'Training Date', 'BDM', 'Yes', 'Status', 'Submitted', 'Actions'].map((h) => (
+                    {['#', 'Doctor', 'Clinic', 'Training Date', 'BDM', 'Support Member', 'Yes', 'Status', 'Submitted', 'Actions'].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -492,6 +492,7 @@ export default function Admin() {
                         <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{s.clinicName}</td>
                         <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{formatDate(s.trainingDate)}</td>
                         <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{s.bdmName}</td>
+                        <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{s.supportMember || '—'}</td>
                         <td className="px-4 py-3 text-center">
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
                             {yesCount(s.checklist)} / 20
