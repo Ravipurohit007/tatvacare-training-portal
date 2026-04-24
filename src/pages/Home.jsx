@@ -15,6 +15,7 @@ export default function Home() {
   const [selected, setSelected] = useState(null)
   const [uploadFile, setUploadFile] = useState(null)
   const [uploadStatus, setUploadStatus] = useState('idle')
+  const [uploadError, setUploadError] = useState('')
 
   const handleSOP = () => {
     if (SOP_URL) {
@@ -48,19 +49,22 @@ export default function Home() {
     setSelected(null)
     setUploadFile(null)
     setUploadStatus('idle')
+    setUploadError('')
   }
 
   const handleUpload = async () => {
     if (!uploadFile || !selected) return
     setUploadStatus('uploading')
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Upload timed out. Check Firebase Storage rules.')), 20000))
     try {
       const storageRef = ref(storage, `signed-checklists/${selected.id}_${Date.now()}_${uploadFile.name}`)
-      await uploadBytes(storageRef, uploadFile)
+      await Promise.race([uploadBytes(storageRef, uploadFile), timeout])
       const url = await getDownloadURL(storageRef)
       await updateDoc(doc(db, 'submissions', selected.id), { signedChecklistUrl: url })
       setUploadStatus('done')
     } catch (e) {
-      console.error(e)
+      console.error('Upload error:', e)
+      setUploadError(e.message || 'Upload failed. Check Firebase Storage rules.')
       setUploadStatus('error')
     }
   }
@@ -266,7 +270,7 @@ export default function Home() {
                     filtered.slice(0, 10).map(s => (
                       <button
                         key={s.id}
-                        onClick={() => { setSelected(s); setUploadFile(null); setUploadStatus('idle') }}
+                        onClick={() => { setSelected(s); setUploadFile(null); setUploadStatus('idle'); setUploadError('') }}
                         className={`w-full text-left px-4 py-3 border-b border-slate-100 last:border-0 transition-colors ${selected?.id === s.id ? 'bg-purple-50' : 'hover:bg-slate-50'}`}
                       >
                         <p className="font-semibold text-slate-800 text-sm">{s.doctorName}</p>
@@ -300,7 +304,7 @@ export default function Home() {
                         className="block w-full text-sm text-slate-600 mb-3 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-white file:text-purple-700 hover:file:bg-purple-50"
                       />
                       {uploadStatus === 'error' && (
-                        <p className="text-red-500 text-xs mb-2">Upload failed. Please try again.</p>
+                        <p className="text-red-500 text-xs mb-2">{uploadError || 'Upload failed. Please try again.'}</p>
                       )}
                       <button
                         onClick={handleUpload}
