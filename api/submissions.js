@@ -13,6 +13,12 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') { res.status(200).end(); return }
 
+  // Parse body explicitly — handles both pre-parsed objects and raw strings
+  let body = req.body
+  if (typeof body === 'string') {
+    try { body = JSON.parse(body) } catch { body = {} }
+  }
+
   try {
     if (req.method === 'GET') {
       const r = await fetch(`${FIRESTORE}/submissions?pageSize=500&key=${API_KEY}`)
@@ -23,13 +29,13 @@ export default async function handler(req, res) {
       const r = await fetch(`${FIRESTORE}/submissions?key=${API_KEY}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(req.body),
+        body: JSON.stringify(body),
       })
       const data = await r.json()
       res.status(r.status).json(data)
 
     } else if (req.method === 'PATCH') {
-      const { id, fields, updateMask } = req.body
+      const { id, fields, updateMask } = body
       const mask = updateMask.map(f => `updateMask.fieldPaths=${encodeURIComponent(f)}`).join('&')
       const r = await fetch(`${FIRESTORE}/submissions/${id}?${mask}&key=${API_KEY}`, {
         method: 'PATCH',

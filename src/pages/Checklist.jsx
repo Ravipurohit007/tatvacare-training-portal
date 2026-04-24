@@ -118,6 +118,7 @@ export default function Checklist() {
   const [signUploadStatus, setSignUploadStatus] = useState('idle')
   const [signUploadError, setSignUploadError] = useState('')
   const [syncedToFirebase, setSyncedToFirebase] = useState(false)
+  const [syncStatus, setSyncStatus] = useState('idle') // 'idle'|'syncing'|'synced'|'failed'
 
   const set = (field) => (val) => setForm((f) => ({ ...f, [field]: val }))
 
@@ -183,9 +184,10 @@ export default function Checklist() {
     localStorage.setItem('tc_submissions', JSON.stringify(allLocal))
 
     // Write to Firebase via Vercel proxy — reliable on any network
+    setSyncStatus('syncing')
     addDocumentREST(submission)
-      .then(id => { if (id) setSubmissionId(id) })
-      .catch(e => console.error('Firebase write failed:', e))
+      .then(id => { if (id) setSubmissionId(id); setSyncStatus('synced') })
+      .catch(e => { console.error('Firebase write failed:', e); setSyncStatus('failed') })
     setSyncedToFirebase(true)
     setSubmitStatus('success')
   }
@@ -202,6 +204,7 @@ export default function Checklist() {
     setSignUploadStatus('idle')
     setSignUploadError('')
     setSyncedToFirebase(false)
+    setSyncStatus('idle')
   }
 
   const handleSignedUpload = async () => {
@@ -253,14 +256,11 @@ export default function Checklist() {
           </span>
 
           <h2 className="text-xl font-bold text-slate-800 mb-1">Submitted!</h2>
-          {syncedToFirebase && (
-            <div className="flex items-center justify-center gap-1.5 text-green-700 text-xs font-semibold mb-1">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              Synced to all devices
-            </div>
-          )}
+          <div className="flex items-center justify-center gap-1.5 text-xs font-semibold mb-1">
+            {syncStatus === 'syncing' && <span className="text-amber-600">⏳ Syncing to all devices…</span>}
+            {syncStatus === 'synced'  && <span className="text-green-700">✓ Synced to all devices</span>}
+            {syncStatus === 'failed'  && <span className="text-red-600">✗ Sync failed — visible on this device only</span>}
+          </div>
           <p className="text-slate-500 text-sm mb-1">
             <span className="font-semibold text-slate-700">{form.doctorName}</span> — {form.clinicName}
           </p>
