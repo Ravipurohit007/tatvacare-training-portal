@@ -1,9 +1,31 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { collection, addDoc } from 'firebase/firestore'
+import { collection, addDoc, doc, runTransaction } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../lib/firebase'
 import { CHECKLIST_ITEMS, STATUS_COLORS } from '../lib/constants'
 import { generateChecklistReport } from '../lib/pdfGenerator'
+
+const SUPPORT_TEAM = ['Dilshab', 'Sukhanya', 'Tasleem', 'Ghousiya']
+
+const getNextSupportMember = async (db) => {
+  if (db) {
+    try {
+      const counterRef = doc(db, 'config', 'roundRobin')
+      let assigned = SUPPORT_TEAM[0]
+      await runTransaction(db, async (tx) => {
+        const snap = await tx.get(counterRef)
+        const idx = snap.exists() ? (snap.data().lastIndex ?? 0) : 0
+        assigned = SUPPORT_TEAM[idx % SUPPORT_TEAM.length]
+        tx.set(counterRef, { lastIndex: (idx + 1) % SUPPORT_TEAM.length })
+      })
+      return assigned
+    } catch (_) {}
+  }
+  const idx = parseInt(localStorage.getItem('tc_rr_index') || '0')
+  const member = SUPPORT_TEAM[idx % SUPPORT_TEAM.length]
+  localStorage.setItem('tc_rr_index', String((idx + 1) % SUPPORT_TEAM.length))
+  return member
+}
 
 const initialChecklist = () =>
   Object.fromEntries(CHECKLIST_ITEMS.map((item) => [item, 'NA']))
@@ -24,7 +46,6 @@ const initialForm = {
   bdmName: '',
   bdmPhone: '',
   amName: '',
-  supportMember: '',
   deviceDetails: '',
   internetType: '',
 }
@@ -130,7 +151,6 @@ export default function Checklist() {
     form.trainingDate &&
     form.bdmName.trim() &&
     form.amName.trim() &&
-    form.supportMember.trim() &&
     !doctorPhoneErr && !frontdeskErr && !bdmPhoneErr && !dateGapErr
   )
 
@@ -142,8 +162,10 @@ export default function Checklist() {
     setSubmitStatus('submitting')
     setError('')
 
+    const supportMember = await getNextSupportMember(db)
     const submission = {
       ...form,
+      supportMember,
       checklist,
       additionalComments,
       handoverStatus: 'pending',
@@ -366,12 +388,6 @@ export default function Checklist() {
               <input type="text" className="form-input" placeholder="Account Manager"
                 value={form.amName} onChange={(e) => set('amName')(e.target.value)} />
             </div>
-            <div>
-              <label className="form-label">Support Team Member <span className="text-red-500">*</span></label>
-              <input type="text" className="form-input" placeholder="Support member for this doctor"
-                value={form.supportMember} onChange={(e) => set('supportMember')(e.target.value)} />
-            </div>
-
             <SelectInput label="Device Details" value={form.deviceDetails} onChange={set('deviceDetails')}
               options={['Tablet', 'Mobile', 'Laptop', 'Desktop']} placeholder="Select device…" />
             <SelectInput label="Internet Type" value={form.internetType} onChange={set('internetType')}
