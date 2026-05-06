@@ -26,6 +26,17 @@ export default async function handler(req, res) {
       res.status(r.status).json(data)
 
     } else if (req.method === 'POST') {
+      // Server-side round-robin: count existing docs to determine next assignee
+      const SUPPORT_TEAM = ['Dilshab', 'Sukhanya', 'Tasleem', 'Ghousiya']
+      try {
+        const listRes = await fetch(`${FIRESTORE}/submissions?pageSize=1000&key=${API_KEY}`)
+        if (listRes.ok) {
+          const listData = await listRes.json()
+          const count = (listData.documents || []).length
+          if (!body.fields) body.fields = {}
+          body.fields.supportMember = { stringValue: SUPPORT_TEAM[count % SUPPORT_TEAM.length] }
+        }
+      } catch {}
       const r = await fetch(`${FIRESTORE}/submissions?key=${API_KEY}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

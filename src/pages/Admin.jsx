@@ -26,6 +26,42 @@ function downloadPdf(docObj, filename) {
   URL.revokeObjectURL(url)
 }
 
+function downloadExcel(submissions) {
+  const headers = [
+    '#', 'Doctor Name', 'Doctor Phone', 'City / State', 'Clinic Name', 'Clinic Type',
+    'Support Member', 'BDM Name', 'BDM Phone', 'AM Name',
+    'Training Date', 'Submission Date', 'Status', 'Reviewed Date', 'Support Comment', 'Yes Modules'
+  ]
+  const escape = (v) => {
+    const s = v == null ? '' : String(v)
+    return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s
+  }
+  const rows = submissions.map((s, i) => [
+    i + 1,
+    s.doctorName || '',
+    s.doctorPhone || '',
+    [s.doctorCity, s.doctorState].filter(Boolean).join(', '),
+    s.clinicName || '',
+    s.clinicType || '',
+    s.supportMember || '',
+    s.bdmName || '',
+    s.bdmPhone || '',
+    s.amName || '',
+    s.trainingDate ? formatDate(s.trainingDate) : '',
+    s.submittedAt ? formatDateTime(s.submittedAt) : '',
+    s.handoverStatus || 'pending',
+    s.reviewedAt ? formatDateTime(s.reviewedAt) : '',
+    s.supportComment || '',
+    yesCount(s.checklist),
+  ].map(escape).join(','))
+  const csv = '﻿' + [headers.map(escape).join(','), ...rows].join('\r\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = `TatvaCare_Submissions_${new Date().toISOString().slice(0,10)}.csv`; a.click()
+  URL.revokeObjectURL(url)
+}
+
 const STATUS_BADGE = {
   approved: 'bg-green-100 text-green-700',
   rejected: 'bg-red-100 text-red-700',
@@ -64,10 +100,13 @@ function LoginScreen({ onLogin }) {
 }
 
 // ── Review Modal ──────────────────────────────────────────────────────────────
-function ReviewModal({ submission, onClose, onSave }) {
+function ReviewModal({ submission, onClose, onSave, onLogCall }) {
   const [decision, setDecision] = useState('')
   const [comment, setComment] = useState('')
   const [saving, setSaving] = useState(false)
+  const [callOutcome, setCallOutcome] = useState('')
+  const [callNote, setCallNote] = useState('')
+  const [loggingCall, setLoggingCall] = useState(false)
 
   const canSave = decision && (decision === 'approved' || comment.trim())
 
@@ -77,6 +116,15 @@ function ReviewModal({ submission, onClose, onSave }) {
     await onSave(submission, decision, comment.trim())
     setSaving(false)
     onClose()
+  }
+
+  const handleLogCall = async () => {
+    if (!callOutcome) return
+    setLoggingCall(true)
+    await onLogCall(submission, { at: new Date().toISOString(), outcome: callOutcome, note: callNote.trim() })
+    setCallOutcome('')
+    setCallNote('')
+    setLoggingCall(false)
   }
 
   return (
@@ -91,10 +139,47 @@ function ReviewModal({ submission, onClose, onSave }) {
           </button>
         </div>
 
-        <p className="text-slate-600 text-sm mb-5">
+        <p className="text-slate-600 text-sm mb-4">
           <span className="font-semibold">{submission.doctorName}</span> — {submission.clinicName}
           <span className="text-slate-400 ml-2 text-xs">({yesCount(submission.checklist)}/20 modules completed)</span>
         </p>
+
+        {/* Call Attempts */}
+        <div className="mb-4 bg-slate-50 rounded-xl p-3 border border-slate-200">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Call Attempts</p>
+          {submission.callAttempts?.length > 0 && (
+            <div className="space-y-1 mb-3">
+              {submission.callAttempts.map((a, i) => (
+                <div key={i} className="flex items-start gap-2 bg-white rounded px-2.5 py-1.5 text-xs border border-slate-100">
+                  <span className={`font-semibold whitespace-nowrap ${a.outcome === 'Answered' ? 'text-green-600' : 'text-amber-600'}`}>{a.outcome}</span>
+                  <span className="text-slate-400 whitespace-nowrap">{formatDateTime(a.at)}</span>
+                  {a.note && <span className="text-slate-600">{a.note}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+          {!submission.callAttempts?.length && (
+            <p className="text-xs text-slate-400 mb-2">No call attempts logged yet.</p>
+          )}
+          <div className="flex gap-2">
+            <select value={callOutcome} onChange={(e) => setCallOutcome(e.target.value)}
+              className="form-input text-xs py-1.5 flex-shrink-0 w-32">
+              <option value="">Outcome…</option>
+              <option>No Answer</option>
+              <option>Busy</option>
+              <option>Answered</option>
+              <option>Rescheduled</option>
+            </select>
+            <input type="text" value={callNote} onChange={(e) => setCallNote(e.target.value)}
+              placeholder="Note (optional)"
+              className="form-input text-xs py-1.5 flex-1 min-w-0" />
+            <button onClick={handleLogCall} disabled={!callOutcome || loggingCall}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg text-white disabled:opacity-50 whitespace-nowrap flex-shrink-0"
+              style={{ background: 'linear-gradient(90deg,#432d85,#703b96)' }}>
+              {loggingCall ? '…' : 'Log Call'}
+            </button>
+          </div>
+        </div>
 
         {/* Decision cards */}
         <div className="grid grid-cols-2 gap-3 mb-4">
@@ -248,6 +333,22 @@ function DetailModal({ submission, onClose, onReview }) {
             </div>
           )}
 
+          {/* Call Attempts */}
+          {submission.callAttempts?.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Call Attempts</p>
+              <div className="space-y-1">
+                {submission.callAttempts.map((a, i) => (
+                  <div key={i} className="flex items-start gap-2 bg-slate-50 rounded px-2.5 py-1.5 text-xs">
+                    <span className={`font-semibold whitespace-nowrap ${a.outcome === 'Answered' ? 'text-green-600' : 'text-amber-600'}`}>{a.outcome}</span>
+                    <span className="text-slate-400 whitespace-nowrap">{formatDateTime(a.at)}</span>
+                    {a.note && <span className="text-slate-600">{a.note}</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Module checklist */}
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Module Status</p>
@@ -388,6 +489,32 @@ export default function Admin() {
     }
   }
 
+  const handleLogCall = async (submission, attempt) => {
+    const existing = Array.isArray(submission.callAttempts) ? submission.callAttempts : []
+    const updated = [...existing, attempt]
+    const updatePayload = { callAttempts: updated }
+
+    // Update localStorage immediately
+    const data = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
+    const idx = data.findIndex((s) => s.submittedAt === submission.submittedAt)
+    if (idx !== -1) { data[idx] = { ...data[idx], ...updatePayload }; localStorage.setItem('tc_submissions', JSON.stringify(data)) }
+
+    // Update in-memory state (table + both modals)
+    setSubmissions((prev) => prev.map((s) => s.submittedAt === submission.submittedAt ? { ...s, ...updatePayload } : s))
+    setReviewing((prev) => prev ? { ...prev, ...updatePayload } : prev)
+    setSelected((prev) => prev ? { ...prev, ...updatePayload } : prev)
+
+    // Push to Firebase — try SDK then REST
+    if (submission.id && !submission.id.startsWith('local_')) {
+      if (isFirebaseConfigured && db) {
+        updateDoc(doc(db, 'submissions', submission.id), updatePayload)
+          .catch(() => updateDocumentREST(submission.id, updatePayload).catch(e => console.error('Call log failed:', e)))
+      } else {
+        updateDocumentREST(submission.id, updatePayload).catch(e => console.error('Call log failed:', e))
+      }
+    }
+  }
+
   if (!authed) return <LoginScreen onLogin={() => setAuthed(true)} />
 
   const counts = { all: submissions.length, pending: 0, approved: 0, rejected: 0 }
@@ -440,6 +567,13 @@ export default function Admin() {
               <svg className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+            <button onClick={() => downloadExcel(submissions)} title="Export to Excel"
+              className="text-purple-200 hover:text-white transition-colors p-1 rounded">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
             </button>
             <span className="bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full">
@@ -589,7 +723,7 @@ export default function Admin() {
       </div>
 
       {selected && <DetailModal submission={selected} onClose={() => setSelected(null)} onReview={(s) => { setSelected(null); setReviewing(s) }} />}
-      {reviewing && <ReviewModal submission={reviewing} onClose={() => setReviewing(null)} onSave={handleReview} />}
+      {reviewing && <ReviewModal submission={reviewing} onClose={() => setReviewing(null)} onSave={handleReview} onLogCall={handleLogCall} />}
     </div>
   )
 }
