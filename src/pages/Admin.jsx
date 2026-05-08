@@ -570,11 +570,12 @@ export default function Admin() {
               </svg>
             </button>
             <button onClick={() => downloadExcel(submissions)} title="Export to Excel"
-              className="text-purple-200 hover:text-white transition-colors p-1 rounded">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              className="bg-white/10 hover:bg-white/20 text-white rounded-lg px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 transition-colors">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
+              Excel
             </button>
             <span className="bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full">
               {submissions.length} total
