@@ -471,20 +471,26 @@ export default function Admin() {
 
   const handleReview = async (submission, decision, comment) => {
     const update = { handoverStatus: decision, supportComment: comment, reviewedAt: new Date().toISOString() }
+    const key = submission.submittedAt
+    const original = { handoverStatus: submission.handoverStatus, supportComment: submission.supportComment, reviewedAt: submission.reviewedAt }
 
-    // Update localStorage and in-memory state immediately
+    // Optimistic update — localStorage + in-memory
     const data = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
-    const idx = data.findIndex((s) => s.submittedAt === submission.submittedAt)
+    const idx = data.findIndex((s) => s.submittedAt === key)
     if (idx !== -1) { data[idx] = { ...data[idx], ...update }; localStorage.setItem('tc_submissions', JSON.stringify(data)) }
-    setSubmissions((prev) => prev.map((s) => s.submittedAt === submission.submittedAt ? { ...s, ...update } : s))
+    setSubmissions((prev) => prev.map((s) => s.submittedAt === key ? { ...s, ...update } : s))
 
-    // Also push to Firebase — try SDK then REST proxy
+    // Await the REST proxy write — rollback if it fails
     if (submission.id && !submission.id.startsWith('local_')) {
-      if (isFirebaseConfigured && db) {
-        updateDoc(doc(db, 'submissions', submission.id), update)
-          .catch(() => updateDocumentREST(submission.id, update).catch(e => console.error('Review update failed:', e)))
-      } else {
-        updateDocumentREST(submission.id, update).catch(e => console.error('Review update failed:', e))
+      try {
+        await updateDocumentREST(submission.id, update)
+      } catch (e) {
+        console.error('Review update failed:', e)
+        const rb = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
+        const ri = rb.findIndex((s) => s.submittedAt === key)
+        if (ri !== -1) { rb[ri] = { ...rb[ri], ...original }; localStorage.setItem('tc_submissions', JSON.stringify(rb)) }
+        setSubmissions((prev) => prev.map((s) => s.submittedAt === key ? { ...s, ...original } : s))
+        alert('Failed to save approval — please check your connection and try again.')
       }
     }
   }
