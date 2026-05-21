@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Support Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,400&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0B0E11;
+    --surface: #141820;
+    --surface-hover: #1A1F2A;
+    --border: #1E2530;
+    --text: #E8ECF1;
+    --text-muted: #7A8494;
+    --accent: #4AE3B5;
+    --accent-dim: rgba(74, 227, 181, 0.12);
+    --red: #F87171;
+    --red-dim: rgba(248, 113, 113, 0.12);
+    --amber: #FBBF24;
+    --amber-dim: rgba(251, 191, 36, 0.12);
+    --blue: #60A5FA;
+    --blue-dim: rgba(96, 165, 250, 0.12);
+    --purple: #C084FC;
+    --purple-dim: rgba(192, 132, 252, 0.12);
+    --pink: #F472B6;
+    --pink-dim: rgba(244, 114, 182, 0.12);
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh; overflow-x: hidden;
+  }
+
+  /* Loader */
+  .loader-wrap {
+    position: fixed; inset: 0; z-index: 999;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 18px;
+    transition: opacity .5s, visibility .5s;
+  }
+  .loader-wrap.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+  .loader-ring {
+    width: 44px; height: 44px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loader-wrap span { color: var(--text-muted); font-size: 13px; letter-spacing: .5px; }
+
+  /* Error */
+  .error-msg {
+    position: fixed; inset: 0; z-index: 998;
+    background: var(--bg);
+    display: none; align-items: center; justify-content: center;
+    flex-direction: column; gap: 14px; padding: 40px;
+  }
+  .error-msg.show { display: flex; }
+  .error-msg h2 { color: var(--red); font-size: 20px; }
+  .error-msg p { color: var(--text-muted); font-size: 14px; text-align: center; max-width: 400px; }
+  .retry-btn {
+    background: var(--accent); color: var(--bg); border: none;
+    padding: 10px 24px; border-radius: 100px; font-family: 'DM Sans';
+    font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 8px;
+  }
+
+  header {
+    padding: 28px 40px 0;
+    display: flex; align-items: flex-end; justify-content: space-between;
+    flex-wrap: wrap; gap: 16px;
+  }
+  header h1 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 32px; font-weight: 400; letter-spacing: -.5px;
+  }
+  header h1 em { font-style: italic; color: var(--accent); }
+  .header-meta {
+    display: flex; align-items: center; gap: 20px;
+    font-size: 13px; color: var(--text-muted);
+  }
+  .header-meta .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+  .header-right { display: flex; align-items: center; gap: 14px; }
+  .refresh-btn {
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text-muted); padding: 7px 14px; border-radius: 100px;
+    font-size: 12px; font-family: 'DM Sans'; cursor: pointer; transition: all .2s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .refresh-btn.spinning svg { animation: spin .6s linear infinite; }
+  .last-updated { font-size: 11px; color: var(--text-muted); }
+
+  .filter-bar { padding: 18px 40px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .filter-btn {
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text-muted); padding: 7px 16px; border-radius: 100px;
+    font-size: 12.5px; font-family: 'DM Sans'; cursor: pointer; transition: all .2s;
+  }
+  .filter-btn:hover { border-color: var(--accent); color: var(--text); }
+  .filter-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+  .dashboard { padding: 0 40px 60px; }
+  .kpi-row {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 14px; margin-bottom: 24px;
+  }
+  .kpi {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 22px 24px;
+    position: relative; overflow: hidden; transition: transform .2s, border-color .2s;
+  }
+  .kpi:hover { transform: translateY(-2px); border-color: var(--accent); }
+  .kpi::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+  .kpi:nth-child(1)::before { background: var(--accent); }
+  .kpi:nth-child(2)::before { background: var(--blue); }
+  .kpi:nth-child(3)::before { background: var(--amber); }
+  .kpi:nth-child(4)::before { background: var(--purple); }
+  .kpi:nth-child(5)::before { background: var(--pink); }
+  .kpi:nth-child(6)::before { background: var(--red); }
+  .kpi-label { font-size: 11.5px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 10px; }
+  .kpi-value { font-family: 'Instrument Serif', serif; font-size: 34px; color: var(--text); line-height: 1; }
+  .kpi-sub { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+
+  .chart-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 24px; }
+  .chart-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 24px; min-height: 340px;
+  }
+  .chart-card.full { grid-column: 1 / -1; }
+  .chart-title {
+    font-size: 13px; font-weight: 500; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: .7px; margin-bottom: 20px;
+  }
+  .chart-wrap { position: relative; width: 100%; height: 280px; }
+  .chart-wrap canvas { width: 100% !important; height: 100% !important; }
+
+  .table-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 24px; overflow: hidden;
+  }
+  .table-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 16px; flex-wrap: wrap; gap: 10px;
+  }
+  .search-box {
+    background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); padding: 8px 14px; border-radius: 100px;
+    font-size: 12.5px; font-family: 'DM Sans'; width: 260px;
+    outline: none; transition: border-color .2s;
+  }
+  .search-box:focus { border-color: var(--accent); }
+  .table-scroll { overflow-x: auto; max-height: 520px; overflow-y: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left; padding: 10px 14px;
+    font-size: 11px; text-transform: uppercase; letter-spacing: .7px;
+    color: var(--text-muted); border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; background: var(--surface);
+    cursor: pointer; white-space: nowrap; user-select: none;
+  }
+  th:hover { color: var(--accent); }
+  td {
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    white-space: nowrap; max-width: 260px; overflow: hidden; text-overflow: ellipsis;
+  }
+  tr:hover td { background: var(--surface-hover); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 11px; font-weight: 500; }
+  .badge-closed { background: var(--accent-dim); color: var(--accent); }
+  .badge-open { background: var(--red-dim); color: var(--red); }
+  .badge-waiting { background: var(--amber-dim); color: var(--amber); }
+  .badge-tech { background: var(--blue-dim); color: var(--blue); }
+  .badge-nontech { background: var(--purple-dim); color: var(--purple); }
+
+  .pagination { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 16px; }
+  .page-btn {
+    background: var(--bg); border: 1px solid var(--border); color: var(--text-muted);
+    padding: 6px 13px; border-radius: var(--radius-sm); font-size: 12px;
+    font-family: 'DM Sans'; cursor: pointer; transition: all .2s;
+  }
+  .page-btn:hover { border-color: var(--accent); color: var(--text); }
+  .page-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+  .page-btn:disabled { opacity: .3; cursor: default; }
+
+  .fade-in { animation: fadeUp .5s ease both; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+
+  @media (max-width: 900px) {
+    header, .filter-bar, .dashboard { padding-left: 18px; padding-right: 18px; }
+    .chart-grid { grid-template-columns: 1fr; }
+    header h1 { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Loader -->
+<div class="loader-wrap" id="loader">
+  <div class="loader-ring"></div>
+  <span>Fetching live data from Google Sheets...</span>
+</div>
+
+<!-- Error -->
+<div class="error-msg" id="errorMsg">
+  <h2>Failed to load data</h2>
+  <p>Could not fetch the Google Sheet. Please check your internet connection and try again.</p>
+  <button class="retry-btn" onclick="fetchData()">Retry</button>
+</div>
+
+<header>
+  <div>
+    <h1>Support <em>Dashboard</em></h1>
+  </div>
+  <div class="header-right">
+    <div class="header-meta">
+      <div class="dot"></div>
+      <span id="ticketCount">–</span>
+      <span>|</span>
+      <span id="dateRange">–</span>
+    </div>
+    <button class="refresh-btn" id="refreshBtn" onclick="fetchData()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+      Refresh
+    </button>
+  </div>
+</header>
+<div style="padding:0 40px"><span class="last-updated" id="lastUpdated"></span></div>
+
+<div class="filter-bar" id="monthFilters"></div>
+
+<div class="dashboard">
+  <div class="kpi-row" id="kpis"></div>
+  <div class="chart-grid">
+    <div class="chart-card full fade-in">
+      <div class="chart-title">Tickets Over Time (Weekly)</div>
+      <div class="chart-wrap"><canvas id="chartTimeline"></canvas></div>
+    </div>
+    <div class="chart-card fade-in">
+      <div class="chart-title">Issue Category (Level 1)</div>
+      <div class="chart-wrap"><canvas id="chartCategory"></canvas></div>
+    </div>
+    <div class="chart-card fade-in">
+      <div class="chart-title">Tech vs Non-Tech</div>
+      <div class="chart-wrap"><canvas id="chartType"></canvas></div>
+    </div>
+    <div class="chart-card fade-in">
+      <div class="chart-title">Top Sub-Issues (Level 3)</div>
+      <div class="chart-wrap"><canvas id="chartSubIssue"></canvas></div>
+    </div>
+    <div class="chart-card fade-in">
+      <div class="chart-title">Resolution Time Distribution (Biz Hrs)</div>
+      <div class="chart-wrap"><canvas id="chartResTime"></canvas></div>
+    </div>
+  </div>
+  <div class="table-card fade-in">
+    <div class="table-header">
+      <div class="chart-title" style="margin:0">All Tickets</div>
+      <input type="text" class="search-box" placeholder="Search tickets…" id="search">
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr>
+          <th data-key="id">ID ↕</th>
+          <th data-key="summary">Summary ↕</th>
+          <th data-key="level1">Category ↕</th>
+          <th data-key="level2">Type ↕</th>
+          <th data-key="level3">Sub-Issue ↕</th>
+          <th data-key="status">Status ↕</th>
+          <th data-key="created">Created ↕</th>
+          <th data-key="avgCloseBiz">Avg Close Hrs ↕</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+</div>
+
+<script>
+const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTJn8Oqmrp9d7bBdI7Jqchs0bRaKFTqFiJDlPHC-ojipvFrYJFM_38-M2otojoArsV80B7zHsepeSHT/pub?output=csv';
+
+let allData = [];
+let filteredData = [];
+let charts = {};
+let currentPage = 1;
+const PAGE_SIZE = 30;
+let sortKey = 'created';
+let sortAsc = false;
+let activeMonth = 'All';
+const COLORS = ['#4AE3B5','#60A5FA','#FBBF24','#C084FC','#F472B6','#F87171','#34D399','#A78BFA','#FB923C'];
+
+Chart.defaults.color = '#7A8494';
+Chart.defaults.borderColor = '#1E2530';
+Chart.defaults.font.family = 'DM Sans';
+Chart.defaults.font.size = 11;
+
+function fetchData() {
+  document.getElementById('loader').classList.remove('hidden');
+  document.getElementById('errorMsg').classList.remove('show');
+  document.getElementById('refreshBtn').classList.add('spinning');
+
+  Papa.parse(SHEET_CSV_URL, {
+    download: true,
+    header: false,
+    skipEmptyLines: true,
+    complete(results) {
+      const rows = results.data.slice(1).filter(r => r[0] && /^\d+$/.test(r[0].trim()));
+      allData = rows.map(r => ({
+        id: r[0]?.trim() || '',
+        summary: r[1]?.trim() || '',
+        tags: r[2]?.trim() || '',
+        level1: r[3]?.trim() || '',
+        level2: r[4]?.trim() || '',
+        level3: r[5]?.trim() || '',
+        status: r[6]?.trim() || '',
+        created: r[7]?.trim() || '',
+        closed: r[8]?.trim() || '',
+        frt: r[9]?.trim() || '',
+        closingHrs: parseFloat(r[10]) || 0,
+        avgCloseExWk: parseFloat(r[11]) || 0,
+        avgCloseBiz: parseFloat(r[12]) || 0,
+        week: r[13]?.trim() || '',
+        month: r[14]?.trim() || '',
+        requester: r[15]?.trim() || '',
+      }));
+      buildFilters();
+      applyFilter();
+      document.getElementById('loader').classList.add('hidden');
+      document.getElementById('refreshBtn').classList.remove('spinning');
+      document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleString();
+    },
+    error() {
+      document.getElementById('loader').classList.add('hidden');
+      document.getElementById('errorMsg').classList.add('show');
+      document.getElementById('refreshBtn').classList.remove('spinning');
+    }
+  });
+}
+
+// Initial load
+fetchData();
+
+function buildFilters() {
+  const bar = document.getElementById('monthFilters');
+  bar.innerHTML = '';
+  const monthsInData = [...new Set(allData.map(d => d.month).filter(Boolean))];
+  const monthOrder = ['December','January','February','March','April','May','June','July','August','September','October','November'];
+  const sorted = monthsInData.sort((a,b) => monthOrder.indexOf(a) - monthOrder.indexOf(b));
+  const months = ['All', ...sorted];
+
+  months.forEach(m => {
+    const btn = document.createElement('button');
+    btn.className = 'filter-btn' + (m === activeMonth ? ' active' : '');
+    btn.textContent = m;
+    btn.onclick = () => {
+      activeMonth = m;
+      bar.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentPage = 1;
+      applyFilter();
+    };
+    bar.appendChild(btn);
+  });
+}
+
+function applyFilter() {
+  filteredData = activeMonth === 'All' ? [...allData] : allData.filter(d => d.month === activeMonth);
+  renderKPIs();
+  renderCharts();
+  sortAndRender();
+  document.getElementById('ticketCount').textContent = filteredData.length + ' tickets';
+  if (filteredData.length) {
+    const dates = filteredData.map(d => d.created).filter(Boolean).sort();
+    document.getElementById('dateRange').textContent = (dates[0]?.split(' ')[0] || '') + ' → ' + (dates[dates.length-1]?.split(' ')[0] || '');
+  }
+}
+
+function renderKPIs() {
+  const d = filteredData;
+  const total = d.length;
+  const open = d.filter(r => r.status !== 'Closed').length;
+  const closed = d.filter(r => r.status === 'Closed').length;
+  const tech = d.filter(r => r.level2 === 'Tech Issue').length;
+  const bizHrs = d.filter(r => r.avgCloseBiz > 0).map(r => r.avgCloseBiz);
+  const avgBiz = bizHrs.length ? (bizHrs.reduce((a,b) => a+b, 0) / bizHrs.length).toFixed(1) : '–';
+  const topCat = countArr(d.map(r => r.level1)).sort((a,b) => b[1]-a[1])[0];
+
+  document.getElementById('kpis').innerHTML = [
+    kpi('Total Tickets', total, activeMonth === 'All' ? 'All months' : activeMonth),
+    kpi('Open / Pending', open, total ? ((open/total)*100).toFixed(1)+'% of total' : ''),
+    kpi('Closed', closed, total ? ((closed/total)*100).toFixed(1)+'% resolved' : ''),
+    kpi('Tech Issues', tech, total ? ((tech/total)*100).toFixed(1)+'% of total' : ''),
+    kpi('Avg Close (Biz Hrs)', avgBiz, 'Business hours only'),
+    kpi('Top Category', topCat ? topCat[0] : '–', topCat ? topCat[1]+' tickets' : ''),
+  ].join('');
+}
+
+function kpi(label, value, sub) {
+  return '<div class="kpi fade-in"><div class="kpi-label">'+label+'</div><div class="kpi-value">'+value+'</div><div class="kpi-sub">'+sub+'</div></div>';
+}
+
+function countArr(arr) {
+  const m = {};
+  arr.filter(v => v && v !== 'Test' && v !== '0').forEach(v => { m[v] = (m[v]||0)+1; });
+  return Object.entries(m);
+}
+
+function renderCharts() {
+  Object.values(charts).forEach(c => c.destroy());
+  charts = {};
+  const d = filteredData;
+
+  // Timeline
+  const weekData = {};
+  d.forEach(r => { if(r.week) weekData[r.week] = (weekData[r.week]||0)+1; });
+  const weeks = Object.keys(weekData).sort((a,b) => parseInt(a)-parseInt(b));
+  charts.timeline = new Chart(document.getElementById('chartTimeline'), {
+    type: 'bar',
+    data: { labels: weeks.map(w => 'W'+w), datasets: [{
+      label: 'Tickets', data: weeks.map(w => weekData[w]),
+      backgroundColor: '#4AE3B5', borderRadius: 6, maxBarThickness: 36,
+    }]},
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{y:{beginAtZero:true,grid:{color:'#1E2530'}},x:{grid:{display:false}}} }
+  });
+
+  // Category donut
+  const cats = countArr(d.map(r => r.level1)).sort((a,b) => b[1]-a[1]).slice(0,7);
+  charts.category = new Chart(document.getElementById('chartCategory'), {
+    type: 'doughnut',
+    data: { labels: cats.map(c => c[0]), datasets: [{
+      data: cats.map(c => c[1]), backgroundColor: COLORS, borderWidth: 0, hoverOffset: 6,
+    }]},
+    options: { responsive:true, maintainAspectRatio:false, cutout:'62%',
+      plugins:{ legend:{ position:'right', labels:{ padding:14, boxWidth:12, borderRadius:3 }}}}
+  });
+
+  // Tech vs Non-Tech
+  const types = countArr(d.map(r => r.level2)).filter(e => ['Tech Issue','Non-Tech Issue'].includes(e[0]));
+  charts.type = new Chart(document.getElementById('chartType'), {
+    type: 'doughnut',
+    data: { labels: types.map(t => t[0]), datasets: [{
+      data: types.map(t => t[1]), backgroundColor: ['#60A5FA','#C084FC'], borderWidth: 0,
+    }]},
+    options: { responsive:true, maintainAspectRatio:false, cutout:'62%',
+      plugins:{ legend:{ position:'right', labels:{ padding:14, boxWidth:12, borderRadius:3 }}}}
+  });
+
+  // Top sub-issues
+  const subs = countArr(d.map(r => r.level3)).sort((a,b) => b[1]-a[1]).slice(0,8);
+  charts.subIssue = new Chart(document.getElementById('chartSubIssue'), {
+    type: 'bar',
+    data: { labels: subs.map(s => s[0].length>35 ? s[0].slice(0,35)+'…' : s[0]), datasets: [{
+      data: subs.map(s => s[1]), backgroundColor: COLORS, borderRadius: 6, maxBarThickness: 24,
+    }]},
+    options: { indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{beginAtZero:true,grid:{color:'#1E2530'}},y:{grid:{display:false}}} }
+  });
+
+  // Resolution time
+  const bins = ['0-1','1-5','5-10','10-24','24-48','48-100','100+'];
+  const bc = [0,0,0,0,0,0,0];
+  d.forEach(r => {
+    const h = r.avgCloseBiz;
+    if(h<=1) bc[0]++; else if(h<=5) bc[1]++; else if(h<=10) bc[2]++;
+    else if(h<=24) bc[3]++; else if(h<=48) bc[4]++; else if(h<=100) bc[5]++; else bc[6]++;
+  });
+  charts.resTime = new Chart(document.getElementById('chartResTime'), {
+    type: 'bar',
+    data: { labels: bins, datasets: [{
+      label: 'Tickets', data: bc,
+      backgroundColor: COLORS.slice(0,7), borderRadius: 6, maxBarThickness: 48,
+    }]},
+    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{y:{beginAtZero:true,grid:{color:'#1E2530'}},x:{grid:{display:false},title:{display:true,text:'Business Hours',color:'#7A8494'}}} }
+  });
+}
+
+// Table
+function sortAndRender() {
+  filteredData.sort((a,b) => {
+    let va = a[sortKey], vb = b[sortKey];
+    if(sortKey === 'avgCloseBiz' || sortKey === 'id') { va = parseFloat(va)||0; vb = parseFloat(vb)||0; }
+    if(va < vb) return sortAsc ? -1 : 1;
+    if(va > vb) return sortAsc ? 1 : -1;
+    return 0;
+  });
+  renderTable();
+}
+
+document.querySelectorAll('th[data-key]').forEach(th => {
+  th.onclick = () => {
+    const key = th.dataset.key;
+    if(sortKey === key) sortAsc = !sortAsc; else { sortKey = key; sortAsc = true; }
+    sortAndRender();
+  };
+});
+
+document.getElementById('search').addEventListener('input', () => { currentPage = 1; renderTable(); });
+
+function renderTable() {
+  const q = document.getElementById('search').value.toLowerCase();
+  let rows = filteredData;
+  if(q) rows = rows.filter(r => (r.id+' '+r.summary+' '+r.level1+' '+r.level3+' '+r.status+' '+r.requester).toLowerCase().includes(q));
+  const totalPages = Math.ceil(rows.length / PAGE_SIZE) || 1;
+  if(currentPage > totalPages) currentPage = totalPages;
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const page = rows.slice(start, start + PAGE_SIZE);
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = page.map(r => '<tr>' +
+    '<td style="font-weight:500;color:var(--accent)">'+esc(r.id)+'</td>' +
+    '<td title="'+esc(r.summary)+'">'+esc(r.summary)+'</td>' +
+    '<td>'+esc(r.level1)+'</td>' +
+    '<td><span class="badge '+(r.level2==='Tech Issue'?'badge-tech':'badge-nontech')+'">'+esc(r.level2)+'</span></td>' +
+    '<td title="'+esc(r.level3)+'">'+esc(r.level3)+'</td>' +
+    '<td><span class="badge '+(r.status==='Closed'?'badge-closed':r.status==='Open'?'badge-open':'badge-waiting')+'">'+esc(r.status)+'</span></td>' +
+    '<td>'+esc(r.created)+'</td>' +
+    '<td>'+r.avgCloseBiz+'</td>' +
+  '</tr>').join('');
+
+  const pg = document.getElementById('pagination');
+  if(totalPages <= 1) { pg.innerHTML = ''; return; }
+  let html = '<button class="page-btn" onclick="goPage('+(currentPage-1)+')" '+(currentPage===1?'disabled':'')+'>‹</button>';
+  for(let i=1;i<=totalPages;i++) {
+    if(totalPages>7 && i>2 && i<totalPages-1 && Math.abs(i-currentPage)>1) { if(!html.endsWith('…</span>')) html+='<span style="color:var(--text-muted)">…</span>'; continue; }
+    html += '<button class="page-btn '+(i===currentPage?'active':'')+'" onclick="goPage('+i+')">'+i+'</button>';
+  }
+  html += '<button class="page-btn" onclick="goPage('+(currentPage+1)+')" '+(currentPage===totalPages?'disabled':'')+'>›</button>';
+  pg.innerHTML = html;
+}
+
+function goPage(p) { currentPage = p; renderTable(); }
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+</script>
+</body>
+</html>

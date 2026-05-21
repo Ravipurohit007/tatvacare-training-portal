@@ -97,6 +97,23 @@ export default function Home() {
               <p className="text-purple-200 text-xs">Healthcare Technology</p>
             </div>
           </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => window.open('https://training-handover-app.vercel.app/ho', '_blank', 'noopener,noreferrer')}
+              className="text-purple-200 hover:text-white text-sm font-medium px-3 py-1.5 rounded-lg border border-purple-500 hover:border-white transition-colors"
+            >
+              Handover Updates
+            </button>
+            <button
+              onClick={() => window.open('https://training-handover-app.vercel.app/rd', '_blank', 'noopener,noreferrer')}
+              className="text-white text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
+              style={{ background: 'rgba(255,255,255,0.18)' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.28)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.18)'}
+            >
+              Retention &amp; Renewal
+            </button>
+          </div>
           <button
             onClick={() => navigate('/admin')}
             className="text-purple-200 hover:text-white text-sm flex items-center gap-1 transition-colors"
