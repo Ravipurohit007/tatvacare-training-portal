@@ -3,542 +3,817 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Product Support Dashboard</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,400&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<title>Doctor Retention Dashboard 2026</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
   :root {
-    --bg: #0B0E11;
-    --surface: #141820;
-    --surface-hover: #1A1F2A;
-    --border: #1E2530;
-    --text: #E8ECF1;
-    --text-muted: #7A8494;
-    --accent: #4AE3B5;
-    --accent-dim: rgba(74, 227, 181, 0.12);
-    --red: #F87171;
-    --red-dim: rgba(248, 113, 113, 0.12);
-    --amber: #FBBF24;
-    --amber-dim: rgba(251, 191, 36, 0.12);
-    --blue: #60A5FA;
-    --blue-dim: rgba(96, 165, 250, 0.12);
-    --purple: #C084FC;
-    --purple-dim: rgba(192, 132, 252, 0.12);
-    --pink: #F472B6;
-    --pink-dim: rgba(244, 114, 182, 0.12);
-    --radius: 14px;
-    --radius-sm: 8px;
+    --bg:#0b0f1a; --surface:#111827; --surface2:#1a2235; --border:#1f2d45;
+    --text:#e2e8f0; --muted:#64748b;
+    --blue:#3b82f6; --teal:#14b8a6; --amber:#f59e0b; --rose:#f43f5e;
+    --green:#22c55e; --purple:#a78bfa;
   }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--bg); color: var(--text);
-    min-height: 100vh; overflow-x: hidden;
-  }
-
-  /* Loader */
-  .loader-wrap {
-    position: fixed; inset: 0; z-index: 999;
-    background: var(--bg);
-    display: flex; align-items: center; justify-content: center;
-    flex-direction: column; gap: 18px;
-    transition: opacity .5s, visibility .5s;
-  }
-  .loader-wrap.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-  .loader-ring {
-    width: 44px; height: 44px;
-    border: 3px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin .8s linear infinite;
-  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:100;}
+  .brand{display:flex;align-items:center;gap:12px;}
+  .brand-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--blue),var(--teal));border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;}
+  .brand-name{font-size:15px;font-weight:700;letter-spacing:-.3px;}
+  .brand-sub{font-size:11px;color:var(--muted);}
+  .live-badge{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--green);font-weight:600;letter-spacing:.5px;}
+  .live-dot{width:7px;height:7px;background:var(--green);border-radius:50%;animation:pulse 1.8s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.4;transform:scale(1.4);}}
   @keyframes spin { to { transform: rotate(360deg); } }
-  .loader-wrap span { color: var(--text-muted); font-size: 13px; letter-spacing: .5px; }
-
-  /* Error */
-  .error-msg {
-    position: fixed; inset: 0; z-index: 998;
-    background: var(--bg);
-    display: none; align-items: center; justify-content: center;
-    flex-direction: column; gap: 14px; padding: 40px;
-  }
-  .error-msg.show { display: flex; }
-  .error-msg h2 { color: var(--red); font-size: 20px; }
-  .error-msg p { color: var(--text-muted); font-size: 14px; text-align: center; max-width: 400px; }
-  .retry-btn {
-    background: var(--accent); color: var(--bg); border: none;
-    padding: 10px 24px; border-radius: 100px; font-family: 'DM Sans';
-    font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 8px;
-  }
-
-  header {
-    padding: 28px 40px 0;
-    display: flex; align-items: flex-end; justify-content: space-between;
-    flex-wrap: wrap; gap: 16px;
-  }
-  header h1 {
-    font-family: 'Instrument Serif', serif;
-    font-size: 32px; font-weight: 400; letter-spacing: -.5px;
-  }
-  header h1 em { font-style: italic; color: var(--accent); }
-  .header-meta {
-    display: flex; align-items: center; gap: 20px;
-    font-size: 13px; color: var(--text-muted);
-  }
-  .header-meta .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
-  .header-right { display: flex; align-items: center; gap: 14px; }
-  .refresh-btn {
-    background: var(--surface); border: 1px solid var(--border);
-    color: var(--text-muted); padding: 7px 14px; border-radius: 100px;
-    font-size: 12px; font-family: 'DM Sans'; cursor: pointer; transition: all .2s;
-    display: flex; align-items: center; gap: 6px;
-  }
-  .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .refresh-btn.spinning svg { animation: spin .6s linear infinite; }
-  .last-updated { font-size: 11px; color: var(--text-muted); }
-
-  .filter-bar { padding: 18px 40px; display: flex; gap: 10px; flex-wrap: wrap; }
-  .filter-btn {
-    background: var(--surface); border: 1px solid var(--border);
-    color: var(--text-muted); padding: 7px 16px; border-radius: 100px;
-    font-size: 12.5px; font-family: 'DM Sans'; cursor: pointer; transition: all .2s;
-  }
-  .filter-btn:hover { border-color: var(--accent); color: var(--text); }
-  .filter-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
-
-  .dashboard { padding: 0 40px 60px; }
-  .kpi-row {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-    gap: 14px; margin-bottom: 24px;
-  }
-  .kpi {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 22px 24px;
-    position: relative; overflow: hidden; transition: transform .2s, border-color .2s;
-  }
-  .kpi:hover { transform: translateY(-2px); border-color: var(--accent); }
-  .kpi::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
-  .kpi:nth-child(1)::before { background: var(--accent); }
-  .kpi:nth-child(2)::before { background: var(--blue); }
-  .kpi:nth-child(3)::before { background: var(--amber); }
-  .kpi:nth-child(4)::before { background: var(--purple); }
-  .kpi:nth-child(5)::before { background: var(--pink); }
-  .kpi:nth-child(6)::before { background: var(--red); }
-  .kpi-label { font-size: 11.5px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 10px; }
-  .kpi-value { font-family: 'Instrument Serif', serif; font-size: 34px; color: var(--text); line-height: 1; }
-  .kpi-sub { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
-
-  .chart-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 24px; }
-  .chart-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 24px; min-height: 340px;
-  }
-  .chart-card.full { grid-column: 1 / -1; }
-  .chart-title {
-    font-size: 13px; font-weight: 500; color: var(--text-muted);
-    text-transform: uppercase; letter-spacing: .7px; margin-bottom: 20px;
-  }
-  .chart-wrap { position: relative; width: 100%; height: 280px; }
-  .chart-wrap canvas { width: 100% !important; height: 100% !important; }
-
-  .table-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 24px; overflow: hidden;
-  }
-  .table-header {
-    display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 16px; flex-wrap: wrap; gap: 10px;
-  }
-  .search-box {
-    background: var(--bg); border: 1px solid var(--border);
-    color: var(--text); padding: 8px 14px; border-radius: 100px;
-    font-size: 12.5px; font-family: 'DM Sans'; width: 260px;
-    outline: none; transition: border-color .2s;
-  }
-  .search-box:focus { border-color: var(--accent); }
-  .table-scroll { overflow-x: auto; max-height: 520px; overflow-y: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th {
-    text-align: left; padding: 10px 14px;
-    font-size: 11px; text-transform: uppercase; letter-spacing: .7px;
-    color: var(--text-muted); border-bottom: 1px solid var(--border);
-    position: sticky; top: 0; background: var(--surface);
-    cursor: pointer; white-space: nowrap; user-select: none;
-  }
-  th:hover { color: var(--accent); }
-  td {
-    padding: 10px 14px; border-bottom: 1px solid var(--border);
-    white-space: nowrap; max-width: 260px; overflow: hidden; text-overflow: ellipsis;
-  }
-  tr:hover td { background: var(--surface-hover); }
-  .badge { display: inline-block; padding: 3px 10px; border-radius: 100px; font-size: 11px; font-weight: 500; }
-  .badge-closed { background: var(--accent-dim); color: var(--accent); }
-  .badge-open { background: var(--red-dim); color: var(--red); }
-  .badge-waiting { background: var(--amber-dim); color: var(--amber); }
-  .badge-tech { background: var(--blue-dim); color: var(--blue); }
-  .badge-nontech { background: var(--purple-dim); color: var(--purple); }
-
-  .pagination { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 16px; }
-  .page-btn {
-    background: var(--bg); border: 1px solid var(--border); color: var(--text-muted);
-    padding: 6px 13px; border-radius: var(--radius-sm); font-size: 12px;
-    font-family: 'DM Sans'; cursor: pointer; transition: all .2s;
-  }
-  .page-btn:hover { border-color: var(--accent); color: var(--text); }
-  .page-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
-  .page-btn:disabled { opacity: .3; cursor: default; }
-
-  .fade-in { animation: fadeUp .5s ease both; }
-  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
-
-  @media (max-width: 900px) {
-    header, .filter-bar, .dashboard { padding-left: 18px; padding-right: 18px; }
-    .chart-grid { grid-template-columns: 1fr; }
-    header h1 { font-size: 24px; }
-  }
+  .last-updated{font-size:11px;color:var(--muted);}
+  .topbar-right{display:flex;align-items:center;gap:16px;}
+  .nav-tabs{background:var(--surface);border-bottom:1px solid var(--border);display:flex;gap:4px;padding:0 24px;overflow-x:auto;}
+  .tab{padding:12px 20px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .2s;}
+  .tab:hover{color:var(--text);}
+  .tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+  .main{padding:24px;max-width:1600px;margin:0 auto;}
+  .view{display:none;} .view.active{display:block;}
+  .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:14px;margin-bottom:22px;}
+  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;position:relative;overflow:hidden;transition:transform .2s;}
+  .kpi:hover{transform:translateY(-2px);}
+  .kpi-accent{position:absolute;top:0;left:0;right:0;height:3px;border-radius:12px 12px 0 0;}
+  .kpi-label{font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;}
+  .kpi-value{font-size:28px;font-weight:700;font-family:'DM Mono',monospace;line-height:1;}
+  .kpi-sub{font-size:11px;color:var(--muted);margin-top:6px;}
+  .kpi-pill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;margin-top:6px;}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+  .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;}
+  .card.mb{margin-bottom:16px;}
+  .card-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;}
+  .card-sub{font-size:11px;color:var(--muted);margin-bottom:16px;}
+  .chart-wrap{position:relative;}
+  .tbl-wrap{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  thead th{text-align:left;padding:10px 12px;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;}
+  thead th:hover{color:var(--text);}
+  tbody tr{border-bottom:1px solid rgba(255,255,255,.03);transition:background .15s;}
+  tbody tr:hover{background:rgba(255,255,255,.03);}
+  tbody td{padding:10px 12px;white-space:nowrap;}
+  .badge{display:inline-flex;align-items:center;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;}
+  .badge-done{background:rgba(34,197,94,.15);color:#22c55e;}
+  .badge-pending{background:rgba(245,158,11,.15);color:#f59e0b;}
+  .badge-upcoming{background:rgba(59,130,246,.15);color:#60a5fa;}
+  .badge-active{background:rgba(20,184,166,.15);color:#2dd4bf;}
+  .badge-inactive{background:rgba(244,63,94,.15);color:#fb7185;}
+  .filter-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center;}
+  .filter-row select,.filter-row input{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;font-size:12px;font-family:'DM Sans',sans-serif;outline:none;}
+  .filter-row select:focus,.filter-row input:focus{border-color:var(--blue);}
+  .filter-label{font-size:11px;color:var(--muted);font-weight:600;}
+  .count-badge{background:var(--blue);color:white;font-size:11px;font-weight:700;padding:3px 12px;border-radius:20px;}
+  .progress-list{display:flex;flex-direction:column;gap:12px;}
+  .progress-item{}
+  .progress-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}
+  .progress-name{font-size:12px;font-weight:500;}
+  .progress-val{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;}
+  .progress-bar{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;}
+  .progress-fill{height:100%;border-radius:3px;transition:width .6s ease;}
+  .month-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;}
+  .month-chip{padding:4px 13px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid var(--border);cursor:pointer;transition:all .2s;color:var(--muted);}
+  .month-chip:hover{border-color:var(--blue);color:var(--blue);}
+  .month-chip.active{background:var(--blue);color:white;border-color:var(--blue);}
+  .btn-sm{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif;}
+  .btn-sm:hover{border-color:var(--blue);color:var(--blue);}
+  ::-webkit-scrollbar{width:4px;height:4px;}
+  ::-webkit-scrollbar-track{background:var(--surface);}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+  @media(max-width:768px){.grid-2,.grid-3{grid-template-columns:1fr;}.kpi-row{grid-template-columns:repeat(2,1fr);}.main{padding:12px;}}
 </style>
 </head>
 <body>
-
-<!-- Loader -->
-<div class="loader-wrap" id="loader">
-  <div class="loader-ring"></div>
-  <span>Fetching live data from Google Sheets...</span>
+<div id="data-loader" style="position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;"><div style="width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin 0.8s linear infinite;"></div><div style="color:var(--muted);font-size:13px;letter-spacing:.5px;">Loading live data...</div></div>
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">🏥</div>
+    <div>
+      <div class="brand-name">Retention Command Center</div>
+      <div class="brand-sub">Doctor Plan Renewal Tracker · 2026</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+    <div class="last-updated" id="lastUpdated">—</div>
+  </div>
 </div>
 
-<!-- Error -->
-<div class="error-msg" id="errorMsg">
-  <h2>Failed to load data</h2>
-  <p>Could not fetch the Google Sheet. Please check your internet connection and try again.</p>
-  <button class="retry-btn" onclick="fetchData()">Retry</button>
+<div class="nav-tabs">
+  <div class="tab active" onclick="showView('overview',this)">📊 Overview</div>
+  <div class="tab" onclick="showView('monthly',this)">📅 Monthly Cohort</div>
+  <div class="tab" onclick="showView('followup',this)">🔔 Follow-up Tracker</div>
+  <div class="tab" onclick="showView('team',this)">👥 Team Performance</div>
+  <div class="tab" onclick="showView('usage',this)">⚡ Platform Usage</div>
 </div>
 
-<header>
-  <div>
-    <h1>Support <em>Dashboard</em></h1>
-  </div>
-  <div class="header-right">
-    <div class="header-meta">
-      <div class="dot"></div>
-      <span id="ticketCount">–</span>
-      <span>|</span>
-      <span id="dateRange">–</span>
-    </div>
-    <button class="refresh-btn" id="refreshBtn" onclick="fetchData()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
-      Refresh
-    </button>
-  </div>
-</header>
-<div style="padding:0 40px"><span class="last-updated" id="lastUpdated"></span></div>
+<div class="main">
 
-<div class="filter-bar" id="monthFilters"></div>
-
-<div class="dashboard">
-  <div class="kpi-row" id="kpis"></div>
-  <div class="chart-grid">
-    <div class="chart-card full fade-in">
-      <div class="chart-title">Tickets Over Time (Weekly)</div>
-      <div class="chart-wrap"><canvas id="chartTimeline"></canvas></div>
+<!-- OVERVIEW -->
+<div id="view-overview" class="view active">
+  <div class="kpi-row" id="kpiRow"></div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">📈 Renewal Status Distribution</div>
+      <div class="card-sub">Overall status across all 1,775 doctors</div>
+      <div class="chart-wrap" style="height:230px"><canvas id="statusDonut"></canvas></div>
     </div>
-    <div class="chart-card fade-in">
-      <div class="chart-title">Issue Category (Level 1)</div>
-      <div class="chart-wrap"><canvas id="chartCategory"></canvas></div>
-    </div>
-    <div class="chart-card fade-in">
-      <div class="chart-title">Tech vs Non-Tech</div>
-      <div class="chart-wrap"><canvas id="chartType"></canvas></div>
-    </div>
-    <div class="chart-card fade-in">
-      <div class="chart-title">Top Sub-Issues (Level 3)</div>
-      <div class="chart-wrap"><canvas id="chartSubIssue"></canvas></div>
-    </div>
-    <div class="chart-card fade-in">
-      <div class="chart-title">Resolution Time Distribution (Biz Hrs)</div>
-      <div class="chart-wrap"><canvas id="chartResTime"></canvas></div>
+    <div class="card">
+      <div class="card-title">💡 Platform Usage — Active vs Inactive</div>
+      <div class="card-sub">Current platform engagement across cohort</div>
+      <div class="chart-wrap" style="height:230px"><canvas id="usageDonut"></canvas></div>
     </div>
   </div>
-  <div class="table-card fade-in">
-    <div class="table-header">
-      <div class="chart-title" style="margin:0">All Tickets</div>
-      <input type="text" class="search-box" placeholder="Search tickets…" id="search">
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">🗺️ Region-wise Status Breakdown</div>
+      <div class="card-sub">Stacked by renewal status per region</div>
+      <div class="chart-wrap" style="height:250px"><canvas id="regionBar"></canvas></div>
     </div>
-    <div class="table-scroll">
+    <div class="card">
+      <div class="card-title">🏙️ Top Cities — Pending vs Done</div>
+      <div class="card-sub">Cities with highest doctor concentration</div>
+      <div class="chart-wrap" style="height:250px"><canvas id="cityBar"></canvas></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">📅 Monthly Cohort — Plan Expiry Distribution</div>
+    <div class="card-sub">Status split by plan end month across 2026</div>
+    <div class="chart-wrap" style="height:270px"><canvas id="monthlyBar"></canvas></div>
+  </div>
+</div>
+
+<!-- MONTHLY -->
+<div id="view-monthly" class="view">
+  <div class="card mb">
+    <div class="card-title">📅 Monthly Cohort Drill-down</div>
+    <div class="card-sub">Select a month to see its detailed breakdown</div>
+    <div class="month-chips" id="monthChips"></div>
+    <div id="monthDetail"></div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">📊 Renewal Rate Trend by Month</div>
+      <div class="card-sub">% Renewal Done of total expiring per month</div>
+      <div class="chart-wrap" style="height:250px"><canvas id="renewalRateLine"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🔵 Active vs Inactive by Month</div>
+      <div class="card-sub">Platform engagement per cohort month</div>
+      <div class="chart-wrap" style="height:250px"><canvas id="usageLine"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- FOLLOW-UP -->
+<div id="view-followup" class="view">
+  <div class="card mb">
+    <div class="card-title" style="margin-bottom:12px;">🔔 Pending Follow-up Tracker <span style="font-size:11px;color:var(--muted);font-weight:400">— 504 doctors requiring action</span></div>
+    <div class="filter-row">
+      <span class="filter-label">REGION:</span>
+      <select id="fu-region" onchange="onRegionChange()">
+        <option value="">All Regions</option>
+      </select>
+      <span class="filter-label">AM:</span>
+      <select id="fu-am" onchange="renderFollowup()">
+        <option value="">All AMs</option>
+      </select>
+      <span class="filter-label">BDM:</span>
+      <select id="fu-bdm" onchange="renderFollowup()">
+        <option value="">All BDMs</option>
+      </select>
+      <span class="filter-label">CITY:</span>
+      <select id="fu-city" onchange="renderFollowup()">
+        <option value="">All Cities</option>
+      </select>
+      <span class="filter-label">MONTH:</span>
+      <select id="fu-month" onchange="renderFollowup()">
+        <option value="">All Months</option>
+      </select>
+      <span class="filter-label">USAGE:</span>
+      <select id="fu-usage" onchange="renderFollowup()">
+        <option value="">All</option>
+        <option value="Active">Active</option>
+        <option value="InActive">Inactive</option>
+      </select>
+    </div>
+    <div class="filter-row">
+      <input type="text" id="fu-search" placeholder="🔍 Search doctor name..." oninput="renderFollowup()" style="min-width:220px">
+      <button class="btn-sm" onclick="clearFilters()">✕ Clear Filters</button>
+      <span class="count-badge" id="fu-count">504 records</span>
+    </div>
+    <div class="tbl-wrap">
       <table>
         <thead><tr>
-          <th data-key="id">ID ↕</th>
-          <th data-key="summary">Summary ↕</th>
-          <th data-key="level1">Category ↕</th>
-          <th data-key="level2">Type ↕</th>
-          <th data-key="level3">Sub-Issue ↕</th>
-          <th data-key="status">Status ↕</th>
-          <th data-key="created">Created ↕</th>
-          <th data-key="avgCloseBiz">Avg Close Hrs ↕</th>
+          <th onclick="sortTable('Doctor Name')"># &nbsp;DOCTOR NAME ↕</th>
+          <th onclick="sortTable('Region')">REGION ↕</th>
+          <th onclick="sortTable('Doctor City')">CITY ↕</th>
+          <th onclick="sortTable('AM Name')">AM NAME ↕</th>
+          <th onclick="sortTable('BDM Name')">BDM NAME ↕</th>
+          <th onclick="sortTable('Plan End Month')">PLAN EXPIRY ↕</th>
+          <th onclick="sortTable('Usage')">USAGE ↕</th>
+          <th onclick="sortTable('Payment Amount')">PAYMENT ↕</th>
+          <th>PRODUCT TYPE</th>
+          <th>STATUS</th>
         </tr></thead>
-        <tbody id="tbody"></tbody>
+        <tbody id="followupBody"></tbody>
       </table>
     </div>
-    <div class="pagination" id="pagination"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;">
+      <div id="fu-page-info" style="font-size:12px;color:var(--muted)"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-sm" onclick="changePage(-1)">← Prev</button>
+        <button class="btn-sm" onclick="changePage(1)">Next →</button>
+      </div>
+    </div>
   </div>
+</div>
+
+<!-- TEAM -->
+<div id="view-team" class="view">
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">🏆 AM-wise Renewal Rate</div>
+      <div class="card-sub">Top AMs ranked by renewal % (min 5 doctors)</div>
+      <div id="amProgressList" class="progress-list"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 AM Performance Table</div>
+      <div class="card-sub">Full breakdown per account manager</div>
+      <div class="tbl-wrap" style="max-height:430px;overflow-y:auto;">
+        <table>
+          <thead><tr>
+            <th>AM NAME</th><th>TOTAL</th><th>✅ DONE</th><th>⏳ PENDING</th><th>🔵 UPCOMING</th><th>📱 ACTIVE</th><th>RENEWAL %</th>
+          </tr></thead>
+          <tbody id="amTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">🗺️ Region Performance Scorecard</div>
+    <div class="card-sub">Renewal rate and full status breakdown per region</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>REGION</th><th>TOTAL</th><th>✅ DONE</th><th>⏳ PENDING</th><th>🔵 UPCOMING</th><th>📱 ACTIVE</th><th>RENEWAL RATE</th>
+        </tr></thead>
+        <tbody id="regionTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- USAGE -->
+<div id="view-usage" class="view">
+  <div class="kpi-row" id="usageKpiRow"></div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">⚡ Feature Usage — Total Interactions</div>
+      <div class="card-sub">Platform feature usage counts across all doctors</div>
+      <div class="chart-wrap" style="height:300px"><canvas id="featureBar"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📱 Active vs Inactive by Region</div>
+      <div class="card-sub">Platform engagement broken down by geography</div>
+      <div class="chart-wrap" style="height:300px"><canvas id="regionUsageBar"></canvas></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">🔍 Key Usage Insights</div>
+    <div class="card-sub">Analysis and action pointers based on platform data</div>
+    <div id="usageInsights" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:8px;"></div>
+  </div>
+</div>
+
 </div>
 
 <script>
-const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTJn8Oqmrp9d7bBdI7Jqchs0bRaKFTqFiJDlPHC-ojipvFrYJFM_38-M2otojoArsV80B7zHsepeSHT/pub?output=csv';
+// ============ LIVE DATA FROM GOOGLE SHEETS ============
+const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSkhiNwt1R8yNTElrJu6YMrndP1-rw5tU71J8RoS5mbkx5i0vWs7ahGXfLYI9DMp0eE2vLEq3SlrkFk/pub?output=csv';
+let MONTHLY, REGION_DATA, FEAT_DATA, CITY_DATA, AM_LIST, REGION_MAP, ALL_MONTHS, ALL_RECORDS, TOTALS;
 
-let allData = [];
-let filteredData = [];
-let charts = {};
-let currentPage = 1;
-const PAGE_SIZE = 30;
-let sortKey = 'created';
-let sortAsc = false;
-let activeMonth = 'All';
-const COLORS = ['#4AE3B5','#60A5FA','#FBBF24','#C084FC','#F472B6','#F87171','#34D399','#A78BFA','#FB923C'];
+function parsePlanEndMonth(val) {
+  if (!val || !val.trim()) return null;
+  const map = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+  const m = val.trim().match(/^(\w{3})-(\d{2})$/);
+  if (!m || !map[m[1]]) return null;
+  return '20' + m[2] + '-' + map[m[1]];
+}
 
-Chart.defaults.color = '#7A8494';
-Chart.defaults.borderColor = '#1E2530';
-Chart.defaults.font.family = 'DM Sans';
-Chart.defaults.font.size = 11;
+function computeData(rows) {
+  ALL_RECORDS = rows.map(r => ({
+    'Doctor Name': r['Doctor Name']||'', 'Region': r['Region']||'',
+    'Doctor City': r['Doctor City']||'', 'AM Name': r['AM Name']||'',
+    'BDM Name': r['BDM Name']||'', 'Plan End Month': parsePlanEndMonth(r['Plan End Month'])||'',
+    'Usage': r['Usage']||'', 'Payment Amount': parseFloat(r['Payment Amount'])||0,
+    'Product Type': r['Product Type']||'', 'Status': r['Status']||'',
+  })).filter(r => r['Doctor Name']);
 
-function fetchData() {
-  document.getElementById('loader').classList.remove('hidden');
-  document.getElementById('errorMsg').classList.remove('show');
-  document.getElementById('refreshBtn').classList.add('spinning');
+  TOTALS = {
+    total: ALL_RECORDS.length,
+    renewal_done: ALL_RECORDS.filter(r=>r['Status']==='Renewal Done').length,
+    pending: ALL_RECORDS.filter(r=>r['Status']==='Pending').length,
+    upcoming: ALL_RECORDS.filter(r=>r['Status']==='Upcoming').length,
+    active: ALL_RECORDS.filter(r=>r['Usage']==='Active').length,
+    inactive: ALL_RECORDS.filter(r=>r['Usage']==='InActive').length,
+  };
 
-  Papa.parse(SHEET_CSV_URL, {
-    download: true,
-    header: false,
-    skipEmptyLines: true,
-    complete(results) {
-      const rows = results.data.slice(1).filter(r => r[0] && /^\d+$/.test(r[0].trim()));
-      allData = rows.map(r => ({
-        id: r[0]?.trim() || '',
-        summary: r[1]?.trim() || '',
-        tags: r[2]?.trim() || '',
-        level1: r[3]?.trim() || '',
-        level2: r[4]?.trim() || '',
-        level3: r[5]?.trim() || '',
-        status: r[6]?.trim() || '',
-        created: r[7]?.trim() || '',
-        closed: r[8]?.trim() || '',
-        frt: r[9]?.trim() || '',
-        closingHrs: parseFloat(r[10]) || 0,
-        avgCloseExWk: parseFloat(r[11]) || 0,
-        avgCloseBiz: parseFloat(r[12]) || 0,
-        week: r[13]?.trim() || '',
-        month: r[14]?.trim() || '',
-        requester: r[15]?.trim() || '',
-      }));
-      buildFilters();
-      applyFilter();
-      document.getElementById('loader').classList.add('hidden');
-      document.getElementById('refreshBtn').classList.remove('spinning');
-      document.getElementById('lastUpdated').textContent = 'Last updated: ' + new Date().toLocaleString();
+  const monthSet = new Set(ALL_RECORDS.map(r=>r['Plan End Month']).filter(Boolean));
+  ALL_MONTHS = [...monthSet].sort();
+
+  MONTHLY = ALL_MONTHS.map(m=>{
+    const g=ALL_RECORDS.filter(r=>r['Plan End Month']===m);
+    const total=g.length,
+      renewal_done=g.filter(r=>r['Status']==='Renewal Done').length,
+      pending=g.filter(r=>r['Status']==='Pending').length,
+      upcoming=g.filter(r=>r['Status']==='Upcoming').length,
+      active=g.filter(r=>r['Usage']==='Active').length,
+      inactive=g.filter(r=>r['Usage']==='InActive').length;
+    return {month:m,total,renewal_done,pending,upcoming,active,inactive,
+      renewal_rate:total?+(renewal_done/total*100).toFixed(1):0};
+  });
+
+  const regions=[...new Set(ALL_RECORDS.map(r=>r['Region']).filter(Boolean))].sort();
+  REGION_DATA=regions.map(region=>{
+    const g=ALL_RECORDS.filter(r=>r['Region']===region);
+    const total=g.length,
+      renewal_done=g.filter(r=>r['Status']==='Renewal Done').length,
+      pending=g.filter(r=>r['Status']==='Pending').length,
+      upcoming=g.filter(r=>r['Status']==='Upcoming').length,
+      active=g.filter(r=>r['Usage']==='Active').length,
+      inactive=g.filter(r=>r['Usage']==='InActive').length;
+    return {region,total,renewal_done,pending,upcoming,active,inactive,
+      renewal_rate:total?+(renewal_done/total*100).toFixed(1):0};
+  });
+
+  const cityMap={};
+  ALL_RECORDS.forEach(r=>{
+    const c=r['Doctor City']; if(!c) return;
+    if(!cityMap[c]) cityMap[c]={'Doctor City':c,total:0,renewal_done:0,pending:0,upcoming:0};
+    cityMap[c].total++;
+    if(r['Status']==='Renewal Done') cityMap[c].renewal_done++;
+    if(r['Status']==='Pending') cityMap[c].pending++;
+    if(r['Status']==='Upcoming') cityMap[c].upcoming++;
+  });
+  CITY_DATA=Object.values(cityMap).sort((a,b)=>b.total-a.total).slice(0,12);
+
+  const amMap={};
+  ALL_RECORDS.forEach(r=>{
+    const a=r['AM Name']; if(!a) return;
+    if(!amMap[a]) amMap[a]={'AM Name':a,total:0,renewal_done:0,pending:0,upcoming:0,active:0,inactive:0};
+    amMap[a].total++;
+    if(r['Status']==='Renewal Done') amMap[a].renewal_done++;
+    if(r['Status']==='Pending') amMap[a].pending++;
+    if(r['Status']==='Upcoming') amMap[a].upcoming++;
+    if(r['Usage']==='Active') amMap[a].active++;
+    if(r['Usage']==='InActive') amMap[a].inactive++;
+  });
+  AM_LIST=Object.values(amMap)
+    .map(a=>({...a,renewal_rate:a.total?+(a.renewal_done/a.total*100).toFixed(1):0}))
+    .sort((a,b)=>b.renewal_rate-a.renewal_rate);
+
+  REGION_MAP={};
+  ALL_RECORDS.forEach(r=>{
+    const region=r['Region']; if(!region) return;
+    if(!REGION_MAP[region]) REGION_MAP[region]={ams:new Set(),bdms:new Set(),cities:new Set()};
+    if(r['AM Name']) REGION_MAP[region].ams.add(r['AM Name']);
+    if(r['BDM Name']) REGION_MAP[region].bdms.add(r['BDM Name']);
+    if(r['Doctor City']) REGION_MAP[region].cities.add(r['Doctor City']);
+  });
+  Object.keys(REGION_MAP).forEach(r=>{
+    REGION_MAP[r].ams=[...REGION_MAP[r].ams].sort();
+    REGION_MAP[r].bdms=[...REGION_MAP[r].bdms].sort();
+    REGION_MAP[r].cities=[...REGION_MAP[r].cities].sort();
+  });
+
+  const featCols=['Total no of Appoitment','Total no of consultation','Point and click','In Clinic',
+    'SMARTSYNC','SMARTSYNC WITH CVT','SNAP RX','Voice RX','Teleconsultation','TAB RX','IPD ADMISSION'];
+  const featLabels=['Appointment','Consultation','Point & Click','In Clinic',
+    'SmartSync','SmartSync+CVT','Snap Rx','Voice Rx','Teleconsult','Tab Rx','IPD Admission'];
+  FEAT_DATA=featCols.map((col,i)=>({
+    feature:featLabels[i],
+    value:rows.reduce((sum,r)=>sum+(parseFloat(r[col])||0),0)
+  }));
+}
+
+function fetchAndInit() {
+  document.getElementById('data-loader').style.display='flex';
+  Papa.parse(SHEET_URL,{
+    download:true, header:true, skipEmptyLines:true,
+    complete(results){
+      computeData(results.data);
+      document.getElementById('data-loader').style.display='none';
+      document.getElementById('lastUpdated').textContent='Updated: '+
+        new Date().toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'});
+      initDashboard();
     },
-    error() {
-      document.getElementById('loader').classList.add('hidden');
-      document.getElementById('errorMsg').classList.add('show');
-      document.getElementById('refreshBtn').classList.remove('spinning');
+    error(){
+      document.getElementById('data-loader').innerHTML=
+        '<div style="color:#f43f5e;font-size:14px;text-align:center">Failed to load data.<br>Please refresh the page.</div>';
     }
   });
 }
 
-// Initial load
-fetchData();
+// ============ CHART DEFAULTS ============
+Chart.defaults.color = '#64748b';
+Chart.defaults.borderColor = '#1f2d45';
+Chart.defaults.font.family = 'DM Sans';
 
-function buildFilters() {
-  const bar = document.getElementById('monthFilters');
-  bar.innerHTML = '';
-  const monthsInData = [...new Set(allData.map(d => d.month).filter(Boolean))];
-  const monthOrder = ['December','January','February','March','April','May','June','July','August','September','October','November'];
-  const sorted = monthsInData.sort((a,b) => monthOrder.indexOf(a) - monthOrder.indexOf(b));
-  const months = ['All', ...sorted];
+const C = {
+  done:'#22c55e', pending:'#f59e0b', upcoming:'#3b82f6',
+  active:'#14b8a6', inactive:'#f43f5e',
+  blue:'#3b82f6', teal:'#14b8a6', amber:'#f59e0b',
+  rose:'#f43f5e', purple:'#a78bfa', green:'#22c55e'
+};
+function rgba(hex,a=0.15){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
 
-  months.forEach(m => {
-    const btn = document.createElement('button');
-    btn.className = 'filter-btn' + (m === activeMonth ? ' active' : '');
-    btn.textContent = m;
-    btn.onclick = () => {
-      activeMonth = m;
-      bar.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentPage = 1;
-      applyFilter();
-    };
-    bar.appendChild(btn);
+// ============ VIEW SWITCHING ============
+function showView(v, el) {
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  el.classList.add('active');
+}
+
+// ============ KPI ROW ============
+function buildKPI() {
+  const T = TOTALS;
+  const kpis = [
+    {l:'Total Doctors',v:T.total.toLocaleString(),c:C.blue,pill:null,sub:'2026 cohort'},
+    {l:'Renewal Done',v:T.renewal_done,c:C.done,pill:{t:'#22c55e',bg:'rgba(34,197,94,.15)',txt:(T.renewal_done/T.total*100).toFixed(1)+'% of total'}},
+    {l:'Pending Follow-up',v:T.pending,c:C.amber,pill:{t:'#f59e0b',bg:'rgba(245,158,11,.15)',txt:'⚠️ Needs action'}},
+    {l:'Upcoming',v:T.upcoming,c:C.blue,sub:'Plan not yet expired'},
+    {l:'Active on Platform',v:T.active,c:C.teal,pill:{t:'#14b8a6',bg:'rgba(20,184,166,.15)',txt:(T.active/T.total*100).toFixed(1)+'% adoption'}},
+    {l:'Inactive Doctors',v:T.inactive,c:C.rose,pill:{t:'#fb7185',bg:'rgba(244,63,94,.15)',txt:(T.inactive/T.total*100).toFixed(1)+'% not using'}}
+  ];
+  document.getElementById('kpiRow').innerHTML = kpis.map(k=>`
+    <div class="kpi">
+      <div class="kpi-accent" style="background:${k.c}"></div>
+      <div class="kpi-label">${k.l}</div>
+      <div class="kpi-value" style="color:${k.c}">${k.v}</div>
+      ${k.pill?`<div class="kpi-pill" style="background:${k.pill.bg};color:${k.pill.t}">${k.pill.txt}</div>`:
+        `<div class="kpi-sub">${k.sub||''}</div>`}
+    </div>`).join('');
+}
+
+// ============ OVERVIEW CHARTS ============
+function buildOverview() {
+  new Chart(document.getElementById('statusDonut'),{
+    type:'doughnut',
+    data:{labels:['Renewal Done','Pending','Upcoming'],
+      datasets:[{data:[TOTALS.renewal_done,TOTALS.pending,TOTALS.upcoming],
+        backgroundColor:[rgba(C.done,.85),rgba(C.amber,.85),rgba(C.blue,.85)],
+        borderColor:[C.done,C.amber,C.blue],borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'68%',
+      plugins:{legend:{position:'right',labels:{boxWidth:10,padding:12,font:{size:11}}},
+      tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw} (${(ctx.raw/TOTALS.total*100).toFixed(1)}%)`}}}}
+  });
+
+  new Chart(document.getElementById('usageDonut'),{
+    type:'doughnut',
+    data:{labels:['Active','Inactive'],
+      datasets:[{data:[TOTALS.active,TOTALS.inactive],
+        backgroundColor:[rgba(C.teal,.85),rgba(C.rose,.85)],
+        borderColor:[C.teal,C.rose],borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'68%',
+      plugins:{legend:{position:'right',labels:{boxWidth:10,padding:12,font:{size:11}}},
+      tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw} (${(ctx.raw/TOTALS.total*100).toFixed(1)}%)`}}}}
+  });
+
+  const rg = REGION_DATA;
+  new Chart(document.getElementById('regionBar'),{
+    type:'bar',
+    data:{labels:rg.map(r=>r.region),
+      datasets:[
+        {label:'Renewal Done',data:rg.map(r=>r.renewal_done),backgroundColor:rgba(C.done,.85),borderColor:C.done,borderWidth:1},
+        {label:'Pending',data:rg.map(r=>r.pending),backgroundColor:rgba(C.amber,.85),borderColor:C.amber,borderWidth:1},
+        {label:'Upcoming',data:rg.map(r=>r.upcoming),backgroundColor:rgba(C.blue,.85),borderColor:C.blue,borderWidth:1}
+      ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:{color:'rgba(255,255,255,.04)'}}},
+      plugins:{legend:{labels:{font:{size:11},boxWidth:10}}}}
+  });
+
+  new Chart(document.getElementById('cityBar'),{
+    type:'bar',
+    data:{labels:CITY_DATA.map(c=>c.Doctor_City||c['Doctor City']),
+      datasets:[
+        {label:'Pending',data:CITY_DATA.map(c=>c.pending),backgroundColor:rgba(C.amber,.85),borderColor:C.amber,borderWidth:1},
+        {label:'Renewal Done',data:CITY_DATA.map(c=>c.renewal_done),backgroundColor:rgba(C.done,.85),borderColor:C.done,borderWidth:1}
+      ]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      scales:{x:{grid:{color:'rgba(255,255,255,.04)'}},y:{grid:{display:false},ticks:{font:{size:10}}}},
+      plugins:{legend:{labels:{font:{size:11},boxWidth:10}}}}
+  });
+
+  const mlabels = MONTHLY.map(m=>{const d=new Date(m.month+'-01');return d.toLocaleString('default',{month:'short'});});
+  new Chart(document.getElementById('monthlyBar'),{
+    type:'bar',
+    data:{labels:mlabels,
+      datasets:[
+        {label:'Renewal Done',data:MONTHLY.map(m=>m.renewal_done),backgroundColor:rgba(C.done,.85),borderColor:C.done,borderWidth:1},
+        {label:'Pending',data:MONTHLY.map(m=>m.pending),backgroundColor:rgba(C.amber,.85),borderColor:C.amber,borderWidth:1},
+        {label:'Upcoming',data:MONTHLY.map(m=>m.upcoming),backgroundColor:rgba(C.blue,.85),borderColor:C.blue,borderWidth:1}
+      ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:{color:'rgba(255,255,255,.04)'}}},
+      plugins:{legend:{labels:{font:{size:11},boxWidth:10}}}}
   });
 }
 
-function applyFilter() {
-  filteredData = activeMonth === 'All' ? [...allData] : allData.filter(d => d.month === activeMonth);
-  renderKPIs();
-  renderCharts();
-  sortAndRender();
-  document.getElementById('ticketCount').textContent = filteredData.length + ' tickets';
-  if (filteredData.length) {
-    const dates = filteredData.map(d => d.created).filter(Boolean).sort();
-    document.getElementById('dateRange').textContent = (dates[0]?.split(' ')[0] || '') + ' → ' + (dates[dates.length-1]?.split(' ')[0] || '');
+// ============ MONTHLY DRILL-DOWN ============
+function buildMonthly() {
+  const chips = document.getElementById('monthChips');
+  chips.innerHTML = MONTHLY.map(m=>{
+    const d=new Date(m.month+'-01');
+    return `<div class="month-chip" onclick="selectMonth('${m.month}',this)">${d.toLocaleString('default',{month:'short',year:'2-digit'})}</div>`;
+  }).join('');
+
+  const labels = MONTHLY.map(m=>{const d=new Date(m.month+'-01');return d.toLocaleString('default',{month:'short'});});
+  new Chart(document.getElementById('renewalRateLine'),{
+    type:'line',
+    data:{labels,datasets:[{label:'Renewal Rate %',data:MONTHLY.map(m=>m.renewal_rate),
+      borderColor:C.done,backgroundColor:rgba(C.done,.1),tension:.3,fill:true,pointBackgroundColor:C.done,pointRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{callback:v=>v+'%'}},x:{grid:{display:false}}},
+      plugins:{legend:{labels:{font:{size:11},boxWidth:10}}}}
+  });
+
+  new Chart(document.getElementById('usageLine'),{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'Active',data:MONTHLY.map(m=>m.active),borderColor:C.teal,backgroundColor:rgba(C.teal,.1),tension:.3,fill:true,pointRadius:3},
+      {label:'Inactive',data:MONTHLY.map(m=>m.inactive),borderColor:C.rose,backgroundColor:rgba(C.rose,.1),tension:.3,fill:true,pointRadius:3}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{y:{grid:{color:'rgba(255,255,255,.04)'}},x:{grid:{display:false}}},
+      plugins:{legend:{labels:{font:{size:11},boxWidth:10}}}}
+  });
+}
+
+function selectMonth(month, el) {
+  document.querySelectorAll('.month-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  const m = MONTHLY.find(x=>x.month===month);
+  const d=new Date(month+'-01');
+  document.getElementById('monthDetail').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:12px;">
+      ${[
+        {l:'Total Expiring',v:m.total,c:C.blue},
+        {l:'Renewal Done',v:m.renewal_done,c:C.done},
+        {l:'Pending',v:m.pending,c:C.amber},
+        {l:'Upcoming',v:m.upcoming,c:C.blue},
+        {l:'Active',v:m.active,c:C.teal},
+        {l:'Inactive',v:m.inactive,c:C.rose},
+        {l:'Renewal Rate',v:m.renewal_rate+'%',c:C.done}
+      ].map(s=>`
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;border-top:3px solid ${s.c}">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${s.l}</div>
+          <div style="font-size:24px;font-weight:700;color:${s.c};font-family:'DM Mono',monospace">${s.v}</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+// ============ FOLLOW-UP TRACKER ============
+let fuSortCol = 'Plan End Month', fuSortDir = 1, fuPage = 0;
+const PAGE = 20;
+
+function populateFollowupFilters() {
+  // Months
+  const mSel = document.getElementById('fu-month');
+  ALL_MONTHS.forEach(m=>{
+    const d=new Date(m+'-01');
+    mSel.innerHTML+=`<option value="${m}">${d.toLocaleString('default',{month:'long',year:'numeric'})}</option>`;
+  });
+  // Regions
+  const rSel = document.getElementById('fu-region');
+  Object.keys(REGION_MAP).sort().forEach(r=>{rSel.innerHTML+=`<option value="${r}">${r}</option>`;});
+  // Initial AM/BDM/City = all unique
+  resetDependentFilters(null);
+}
+
+function resetDependentFilters(region) {
+  const amSel = document.getElementById('fu-am');
+  const bdmSel = document.getElementById('fu-bdm');
+  const citySel = document.getElementById('fu-city');
+  amSel.innerHTML = '<option value="">All AMs</option>';
+  bdmSel.innerHTML = '<option value="">All BDMs</option>';
+  citySel.innerHTML = '<option value="">All Cities</option>';
+
+  let ams, bdms, cities;
+  if (region && REGION_MAP[region]) {
+    ams = REGION_MAP[region].ams;
+    bdms = REGION_MAP[region].bdms;
+    cities = REGION_MAP[region].cities;
+  } else {
+    // All unique from all records
+    ams = [...new Set(ALL_RECORDS.map(r=>r['AM Name']))].filter(Boolean).sort();
+    bdms = [...new Set(ALL_RECORDS.map(r=>r['BDM Name']))].filter(Boolean).sort();
+    cities = [...new Set(ALL_RECORDS.map(r=>r['Doctor City']))].filter(Boolean).sort();
   }
+  ams.forEach(a=>{amSel.innerHTML+=`<option value="${a}">${a}</option>`;});
+  bdms.forEach(b=>{bdmSel.innerHTML+=`<option value="${b}">${b}</option>`;});
+  cities.forEach(c=>{citySel.innerHTML+=`<option value="${c}">${c}</option>`;});
 }
 
-function renderKPIs() {
-  const d = filteredData;
-  const total = d.length;
-  const open = d.filter(r => r.status !== 'Closed').length;
-  const closed = d.filter(r => r.status === 'Closed').length;
-  const tech = d.filter(r => r.level2 === 'Tech Issue').length;
-  const bizHrs = d.filter(r => r.avgCloseBiz > 0).map(r => r.avgCloseBiz);
-  const avgBiz = bizHrs.length ? (bizHrs.reduce((a,b) => a+b, 0) / bizHrs.length).toFixed(1) : '–';
-  const topCat = countArr(d.map(r => r.level1)).sort((a,b) => b[1]-a[1])[0];
-
-  document.getElementById('kpis').innerHTML = [
-    kpi('Total Tickets', total, activeMonth === 'All' ? 'All months' : activeMonth),
-    kpi('Open / Pending', open, total ? ((open/total)*100).toFixed(1)+'% of total' : ''),
-    kpi('Closed', closed, total ? ((closed/total)*100).toFixed(1)+'% resolved' : ''),
-    kpi('Tech Issues', tech, total ? ((tech/total)*100).toFixed(1)+'% of total' : ''),
-    kpi('Avg Close (Biz Hrs)', avgBiz, 'Business hours only'),
-    kpi('Top Category', topCat ? topCat[0] : '–', topCat ? topCat[1]+' tickets' : ''),
-  ].join('');
+function onRegionChange() {
+  const region = document.getElementById('fu-region').value;
+  resetDependentFilters(region || null);
+  fuPage = 0;
+  renderFollowup();
 }
 
-function kpi(label, value, sub) {
-  return '<div class="kpi fade-in"><div class="kpi-label">'+label+'</div><div class="kpi-value">'+value+'</div><div class="kpi-sub">'+sub+'</div></div>';
+function clearFilters() {
+  document.getElementById('fu-region').value = '';
+  document.getElementById('fu-month').value = '';
+  document.getElementById('fu-usage').value = '';
+  document.getElementById('fu-search').value = '';
+  resetDependentFilters(null);
+  fuPage = 0;
+  renderFollowup();
 }
 
-function countArr(arr) {
-  const m = {};
-  arr.filter(v => v && v !== 'Test' && v !== '0').forEach(v => { m[v] = (m[v]||0)+1; });
-  return Object.entries(m);
-}
+function getFiltered() {
+  const month = document.getElementById('fu-month').value;
+  const region = document.getElementById('fu-region').value;
+  const usage = document.getElementById('fu-usage').value;
+  const am = document.getElementById('fu-am').value;
+  const bdm = document.getElementById('fu-bdm').value;
+  const city = document.getElementById('fu-city').value;
+  const search = document.getElementById('fu-search').value.toLowerCase().trim();
 
-function renderCharts() {
-  Object.values(charts).forEach(c => c.destroy());
-  charts = {};
-  const d = filteredData;
-
-  // Timeline
-  const weekData = {};
-  d.forEach(r => { if(r.week) weekData[r.week] = (weekData[r.week]||0)+1; });
-  const weeks = Object.keys(weekData).sort((a,b) => parseInt(a)-parseInt(b));
-  charts.timeline = new Chart(document.getElementById('chartTimeline'), {
-    type: 'bar',
-    data: { labels: weeks.map(w => 'W'+w), datasets: [{
-      label: 'Tickets', data: weeks.map(w => weekData[w]),
-      backgroundColor: '#4AE3B5', borderRadius: 6, maxBarThickness: 36,
-    }]},
-    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
-      scales:{y:{beginAtZero:true,grid:{color:'#1E2530'}},x:{grid:{display:false}}} }
-  });
-
-  // Category donut
-  const cats = countArr(d.map(r => r.level1)).sort((a,b) => b[1]-a[1]).slice(0,7);
-  charts.category = new Chart(document.getElementById('chartCategory'), {
-    type: 'doughnut',
-    data: { labels: cats.map(c => c[0]), datasets: [{
-      data: cats.map(c => c[1]), backgroundColor: COLORS, borderWidth: 0, hoverOffset: 6,
-    }]},
-    options: { responsive:true, maintainAspectRatio:false, cutout:'62%',
-      plugins:{ legend:{ position:'right', labels:{ padding:14, boxWidth:12, borderRadius:3 }}}}
-  });
-
-  // Tech vs Non-Tech
-  const types = countArr(d.map(r => r.level2)).filter(e => ['Tech Issue','Non-Tech Issue'].includes(e[0]));
-  charts.type = new Chart(document.getElementById('chartType'), {
-    type: 'doughnut',
-    data: { labels: types.map(t => t[0]), datasets: [{
-      data: types.map(t => t[1]), backgroundColor: ['#60A5FA','#C084FC'], borderWidth: 0,
-    }]},
-    options: { responsive:true, maintainAspectRatio:false, cutout:'62%',
-      plugins:{ legend:{ position:'right', labels:{ padding:14, boxWidth:12, borderRadius:3 }}}}
-  });
-
-  // Top sub-issues
-  const subs = countArr(d.map(r => r.level3)).sort((a,b) => b[1]-a[1]).slice(0,8);
-  charts.subIssue = new Chart(document.getElementById('chartSubIssue'), {
-    type: 'bar',
-    data: { labels: subs.map(s => s[0].length>35 ? s[0].slice(0,35)+'…' : s[0]), datasets: [{
-      data: subs.map(s => s[1]), backgroundColor: COLORS, borderRadius: 6, maxBarThickness: 24,
-    }]},
-    options: { indexAxis:'y', responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
-      scales:{x:{beginAtZero:true,grid:{color:'#1E2530'}},y:{grid:{display:false}}} }
-  });
-
-  // Resolution time
-  const bins = ['0-1','1-5','5-10','10-24','24-48','48-100','100+'];
-  const bc = [0,0,0,0,0,0,0];
-  d.forEach(r => {
-    const h = r.avgCloseBiz;
-    if(h<=1) bc[0]++; else if(h<=5) bc[1]++; else if(h<=10) bc[2]++;
-    else if(h<=24) bc[3]++; else if(h<=48) bc[4]++; else if(h<=100) bc[5]++; else bc[6]++;
-  });
-  charts.resTime = new Chart(document.getElementById('chartResTime'), {
-    type: 'bar',
-    data: { labels: bins, datasets: [{
-      label: 'Tickets', data: bc,
-      backgroundColor: COLORS.slice(0,7), borderRadius: 6, maxBarThickness: 48,
-    }]},
-    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
-      scales:{y:{beginAtZero:true,grid:{color:'#1E2530'}},x:{grid:{display:false},title:{display:true,text:'Business Hours',color:'#7A8494'}}} }
+  return ALL_RECORDS.filter(r=>{
+    if(month && r['Plan End Month']!==month) return false;
+    if(region && r['Region']!==region) return false;
+    if(usage && r['Usage']!==usage) return false;
+    if(am && r['AM Name']!==am) return false;
+    if(bdm && r['BDM Name']!==bdm) return false;
+    if(city && r['Doctor City']!==city) return false;
+    if(search && !r['Doctor Name'].toLowerCase().includes(search)) return false;
+    return true;
   });
 }
 
-// Table
-function sortAndRender() {
-  filteredData.sort((a,b) => {
-    let va = a[sortKey], vb = b[sortKey];
-    if(sortKey === 'avgCloseBiz' || sortKey === 'id') { va = parseFloat(va)||0; vb = parseFloat(vb)||0; }
-    if(va < vb) return sortAsc ? -1 : 1;
-    if(va > vb) return sortAsc ? 1 : -1;
-    return 0;
-  });
-  renderTable();
+function sortTable(col) {
+  if(fuSortCol===col) fuSortDir*=-1; else {fuSortCol=col;fuSortDir=1;}
+  fuPage=0; renderFollowup();
 }
 
-document.querySelectorAll('th[data-key]').forEach(th => {
-  th.onclick = () => {
-    const key = th.dataset.key;
-    if(sortKey === key) sortAsc = !sortAsc; else { sortKey = key; sortAsc = true; }
-    sortAndRender();
-  };
-});
-
-document.getElementById('search').addEventListener('input', () => { currentPage = 1; renderTable(); });
-
-function renderTable() {
-  const q = document.getElementById('search').value.toLowerCase();
-  let rows = filteredData;
-  if(q) rows = rows.filter(r => (r.id+' '+r.summary+' '+r.level1+' '+r.level3+' '+r.status+' '+r.requester).toLowerCase().includes(q));
-  const totalPages = Math.ceil(rows.length / PAGE_SIZE) || 1;
-  if(currentPage > totalPages) currentPage = totalPages;
-  const start = (currentPage - 1) * PAGE_SIZE;
-  const page = rows.slice(start, start + PAGE_SIZE);
-  const tbody = document.getElementById('tbody');
-  tbody.innerHTML = page.map(r => '<tr>' +
-    '<td style="font-weight:500;color:var(--accent)">'+esc(r.id)+'</td>' +
-    '<td title="'+esc(r.summary)+'">'+esc(r.summary)+'</td>' +
-    '<td>'+esc(r.level1)+'</td>' +
-    '<td><span class="badge '+(r.level2==='Tech Issue'?'badge-tech':'badge-nontech')+'">'+esc(r.level2)+'</span></td>' +
-    '<td title="'+esc(r.level3)+'">'+esc(r.level3)+'</td>' +
-    '<td><span class="badge '+(r.status==='Closed'?'badge-closed':r.status==='Open'?'badge-open':'badge-waiting')+'">'+esc(r.status)+'</span></td>' +
-    '<td>'+esc(r.created)+'</td>' +
-    '<td>'+r.avgCloseBiz+'</td>' +
-  '</tr>').join('');
-
-  const pg = document.getElementById('pagination');
-  if(totalPages <= 1) { pg.innerHTML = ''; return; }
-  let html = '<button class="page-btn" onclick="goPage('+(currentPage-1)+')" '+(currentPage===1?'disabled':'')+'>‹</button>';
-  for(let i=1;i<=totalPages;i++) {
-    if(totalPages>7 && i>2 && i<totalPages-1 && Math.abs(i-currentPage)>1) { if(!html.endsWith('…</span>')) html+='<span style="color:var(--text-muted)">…</span>'; continue; }
-    html += '<button class="page-btn '+(i===currentPage?'active':'')+'" onclick="goPage('+i+')">'+i+'</button>';
+function renderFollowup() {
+  let recs = getFiltered();
+  if(fuSortCol){
+    recs = [...recs].sort((a,b)=>{
+      let av=a[fuSortCol], bv=b[fuSortCol];
+      if(typeof av==='number') return (av-bv)*fuSortDir;
+      return String(av).localeCompare(String(bv))*fuSortDir;
+    });
   }
-  html += '<button class="page-btn" onclick="goPage('+(currentPage+1)+')" '+(currentPage===totalPages?'disabled':'')+'>›</button>';
-  pg.innerHTML = html;
+  document.getElementById('fu-count').textContent = recs.length+' records';
+  const start = fuPage*PAGE;
+  const pg = recs.slice(start, start+PAGE);
+  const tbody = document.getElementById('followupBody');
+  if(!pg.length){tbody.innerHTML=`<tr><td colspan="10" style="text-align:center;padding:30px;color:var(--muted)">No records found for selected filters</td></tr>`;return;}
+  tbody.innerHTML = pg.map((r,i)=>`
+    <tr>
+      <td style="color:var(--muted);font-family:'DM Mono',monospace;font-size:10px">${start+i+1}</td>
+      <td style="font-weight:500">${r['Doctor Name']}</td>
+      <td><span class="badge badge-upcoming" style="font-size:10px">${r['Region']}</span></td>
+      <td>${r['Doctor City']}</td>
+      <td>${r['AM Name']}</td>
+      <td style="color:var(--muted);font-size:11px">${r['BDM Name']}</td>
+      <td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--amber)">${r['Plan End Month']}</span></td>
+      <td><span class="badge ${r['Usage']==='Active'?'badge-active':'badge-inactive'}">${r['Usage']}</span></td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px">₹${Number(r['Payment Amount']).toLocaleString()}</td>
+      <td style="font-size:10px;color:var(--muted);max-width:130px;overflow:hidden;text-overflow:ellipsis">${r['Product Type']||'-'}</td>
+    </tr>`).join('');
+  document.getElementById('fu-page-info').textContent = `Showing ${start+1}–${Math.min(start+PAGE,recs.length)} of ${recs.length}`;
 }
 
-function goPage(p) { currentPage = p; renderTable(); }
-function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function changePage(dir) {
+  const recs = getFiltered();
+  const maxPg = Math.ceil(recs.length/PAGE)-1;
+  fuPage = Math.max(0, Math.min(maxPg, fuPage+dir));
+  renderFollowup();
+}
+
+// ============ TEAM PERFORMANCE ============
+function buildTeam() {
+  const sorted = [...AM_LIST].sort((a,b)=>b.renewal_rate-a.renewal_rate);
+  const maxR = Math.max(...sorted.map(a=>a.renewal_rate));
+  document.getElementById('amProgressList').innerHTML = sorted.slice(0,10).map(a=>`
+    <div class="progress-item">
+      <div class="progress-header">
+        <span class="progress-name">${a.AM_Name||a['AM Name']}</span>
+        <span class="progress-val">${a.renewal_done}/${a.total} · ${a.renewal_rate}%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width:${(a.renewal_rate/maxR*100)}%;background:${a.renewal_rate>=15?C.done:a.renewal_rate>=10?C.teal:C.amber}"></div>
+      </div>
+    </div>`).join('');
+
+  document.getElementById('amTableBody').innerHTML = [...AM_LIST].sort((a,b)=>b.total-a.total).map(a=>`
+    <tr>
+      <td style="font-weight:500">${a.AM_Name||a['AM Name']}</td>
+      <td style="font-family:'DM Mono',monospace">${a.total}</td>
+      <td><span class="badge badge-done">${a.renewal_done}</span></td>
+      <td><span class="badge badge-pending">${a.pending}</span></td>
+      <td><span class="badge badge-upcoming">${a.upcoming}</span></td>
+      <td><span class="badge badge-active">${a.active}</span></td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="background:var(--surface2);border-radius:3px;height:5px;width:60px;overflow:hidden">
+            <div style="width:${Math.min(a.renewal_rate*5,100)}%;height:100%;background:${a.renewal_rate>=15?C.done:a.renewal_rate>=10?C.teal:C.amber};border-radius:3px"></div>
+          </div>
+          <span style="font-size:11px;font-family:'DM Mono',monospace;font-weight:600;color:${a.renewal_rate>=15?'#22c55e':a.renewal_rate>=10?'#14b8a6':'#f59e0b'}">${a.renewal_rate}%</span>
+        </div>
+      </td>
+    </tr>`).join('');
+
+  document.getElementById('regionTableBody').innerHTML = REGION_DATA.map(r=>`
+    <tr>
+      <td><strong>${r.region}</strong></td>
+      <td style="font-family:'DM Mono',monospace">${r.total}</td>
+      <td><span class="badge badge-done">${r.renewal_done}</span></td>
+      <td><span class="badge badge-pending">${r.pending}</span></td>
+      <td><span class="badge badge-upcoming">${r.upcoming}</span></td>
+      <td><span class="badge badge-active">${r.active}</span></td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="background:var(--surface2);border-radius:3px;height:5px;width:80px;overflow:hidden">
+            <div style="width:${Math.min(r.renewal_rate*6,100)}%;height:100%;background:${r.renewal_rate>=12?C.done:C.teal};border-radius:3px"></div>
+          </div>
+          <span style="font-size:12px;font-family:'DM Mono',monospace;font-weight:600;color:${r.renewal_rate>=12?'#22c55e':'#14b8a6'}">${r.renewal_rate}%</span>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+// ============ USAGE ============
+function buildUsage() {
+  const total = FEAT_DATA.reduce((s,f)=>s+f.value,0);
+  document.getElementById('usageKpiRow').innerHTML = [
+    {l:'Total Platform Interactions',v:(total/1e6).toFixed(1)+'M',c:C.blue,sub:'Across all features'},
+    {l:'Top Feature',v:'Appointments',c:C.teal,sub:'3.13M interactions'},
+    {l:'Active Doctors',v:TOTALS.active,c:C.done,sub:(TOTALS.active/TOTALS.total*100).toFixed(0)+'% platform adoption'},
+    {l:'Inactive (Churn Risk)',v:TOTALS.inactive,c:C.rose,sub:'Not using platform'}
+  ].map(k=>`
+    <div class="kpi">
+      <div class="kpi-accent" style="background:${k.c}"></div>
+      <div class="kpi-label">${k.l}</div>
+      <div class="kpi-value" style="color:${k.c}">${k.v}</div>
+      <div class="kpi-sub">${k.sub}</div>
+    </div>`).join('');
+
+  const pallete = [C.blue,C.teal,C.green,C.purple,C.amber,C.rose,C.blue,C.teal,C.green].map(c=>rgba(c,.85));
+  new Chart(document.getElementById('featureBar'),{
+    type:'bar',
+    data:{labels:FEAT_DATA.map(f=>f.feature),
+      datasets:[{label:'Usage Count',data:FEAT_DATA.map(f=>f.value),
+        backgroundColor:pallete,borderColor:pallete.map(c=>c.replace(/[\d.]+\)$/,'1)')),borderWidth:1,borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{callback:v=>v>=1e6?(v/1e6).toFixed(1)+'M':(v/1e3).toFixed(0)+'K'}},y:{grid:{display:false}}},
+      plugins:{legend:{display:false}}}
+  });
+
+  new Chart(document.getElementById('regionUsageBar'),{
+    type:'bar',
+    data:{labels:REGION_DATA.map(r=>r.region),
+      datasets:[
+        {label:'Active',data:REGION_DATA.map(r=>r.active),backgroundColor:rgba(C.teal,.85),borderColor:C.teal,borderWidth:1},
+        {label:'Inactive',data:REGION_DATA.map(r=>r.total-r.active),backgroundColor:rgba(C.rose,.85),borderColor:C.rose,borderWidth:1}
+      ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:{color:'rgba(255,255,255,.04)'}}},
+      plugins:{legend:{labels:{font:{size:11},boxWidth:10}}}}
+  });
+
+  document.getElementById('usageInsights').innerHTML = [
+    {icon:'🏆',title:'Appointments Dominates',body:'3.13M appointment interactions — core EMR usage is strong. Doctors using this feature are strong renewal candidates.'},
+    {icon:'⚠️',title:'Inactive = Churn Risk',body:`${TOTALS.inactive} doctors (${(TOTALS.inactive/TOTALS.total*100).toFixed(0)}%) not using platform. Low usage strongly correlates with non-renewal.`},
+    {icon:'📍',title:'South Region Alert',body:'South has highest Pending ratio relative to its size. Needs targeted follow-up and engagement push.'},
+    {icon:'💡',title:'SMARTSYNC Upsell',body:'Only 872K SMARTSYNC vs 3M clinic interactions. Strong upsell opportunity during renewal discussions.'}
+  ].map(i=>`
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px">
+      <div style="font-size:22px;margin-bottom:8px">${i.icon}</div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:5px">${i.title}</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.6">${i.body}</div>
+    </div>`).join('');
+}
+
+// ============ INIT ============
+function initDashboard() {
+  buildKPI(); buildOverview(); buildMonthly();
+  populateFollowupFilters(); renderFollowup();
+  buildTeam(); buildUsage();
+}
+fetchAndInit();
+
 </script>
 </body>
 </html>
