@@ -489,7 +489,7 @@ function buildOverview(){
   });
 
   // Team workload donut
-  const memberOf=r=>(r['Support Member']||'').trim()||'Not Assigned';
+  const memberOf=r=>{const v=(r['Support Member']||'').trim();return(!v||v==='-')?'Not Assigned':v;};
   const assignees=[...new Set(d.map(memberOf))].sort((a,b)=>{
     if(a==='Not Assigned') return 1;
     if(b==='Not Assigned') return -1;
