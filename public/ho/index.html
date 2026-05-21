@@ -225,12 +225,18 @@ function checkPwd(){
     <div class="filter-row">
       <span class="filter-label">MONTH:</span>
       <select id="f-month" onchange="renderTracker()"><option value="">All Months</option></select>
-      <span class="filter-label">REGION:</span>
-      <select id="f-region" onchange="renderTracker()"><option value="">All Regions</option></select>
       <span class="filter-label">AM:</span>
       <select id="f-am" onchange="renderTracker()"><option value="">All AMs</option></select>
-      <span class="filter-label">ASSIGNED TO:</span>
+      <span class="filter-label">BDM:</span>
+      <select id="f-bdm" onchange="renderTracker()"><option value="">All BDMs</option></select>
+      <span class="filter-label">SUPPORT MEMBER:</span>
       <select id="f-assigned" onchange="renderTracker()"><option value="">All</option></select>
+      <span class="filter-label">HANDOVER TO CS:</span>
+      <select id="f-handover" onchange="renderTracker()">
+        <option value="">All</option>
+        <option>Yes</option>
+        <option>No</option>
+      </select>
       <span class="filter-label">STATUS:</span>
       <select id="f-status" onchange="renderTracker()">
         <option value="">All</option>
@@ -249,14 +255,14 @@ function checkPwd(){
       <table>
         <thead><tr>
           <th onclick="sortTracker('Doctor Name')">#  DOCTOR NAME ↕</th>
-          <th onclick="sortTracker('Clinic Name')">CLINIC ↕</th>
-          <th onclick="sortTracker('Region')">REGION ↕</th>
+          <th onclick="sortTracker('City')">CITY ↕</th>
           <th onclick="sortTracker('AM Name')">AM ↕</th>
-          <th onclick="sortTracker('Assigned To')">ASSIGNED TO ↕</th>
+          <th onclick="sortTracker('BDM Name')">BDM ↕</th>
+          <th onclick="sortTracker('Support Member')">SUPPORT MEMBER ↕</th>
           <th onclick="sortTracker('Month')">MONTH ↕</th>
+          <th onclick="sortTracker('Handover to CS')">HANDOVER TO CS ↕</th>
           <th onclick="sortTracker('Status')">STATUS ↕</th>
-          <th onclick="sortTracker('Last Follow-up')">LAST FOLLOW-UP ↕</th>
-          <th>NEXT ACTION</th>
+          <th onclick="sortTracker('Reviewed Date')">REVIEWED DATE ↕</th>
         </tr></thead>
         <tbody id="trackerBody"></tbody>
       </table>
@@ -317,7 +323,7 @@ function checkPwd(){
 
 <script>
 // ── Config ────────────────────────────────────────────────────
-const SHEET_URL = 'PASTE_GOOGLE_SHEET_CSV_URL_HERE';
+const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSkhiNwt1R8yNTElrJu6YMrndP1-rw5tU71J8RoS5mbkx5i0vWs7ahGXfLYI9DMp0eE2vLEq3SlrkFk/pub?gid=1449462011&single=true&output=csv';
 
 // ── Data ──────────────────────────────────────────────────────
 let ALL_RECORDS = [];
@@ -345,18 +351,16 @@ function rgba(hex,a){
 function computeData(rows){
   ALL_RECORDS = rows.map(r=>({
     'Doctor Name': r['Doctor Name']||'',
-    'Clinic Name': r['Clinic Name']||'',
-    'City': r['City']||'',
-    'Region': r['Region']||'',
+    'City': r['Doctor City']||'',
     'AM Name': r['AM Name']||'',
     'BDM Name': r['BDM Name']||'',
-    'Handover Date': r['Handover Date']||'',
-    'Assigned To': r['Assigned To']||'',
+    'Onboarding Date': r['Onboarding Date']||'',
+    'Support Member': r['Support Member']||'',
     'Status': r['Status']||'',
-    'Last Follow-up': r['Last Follow-up']||'',
-    'Next Action': r['Next Action']||'',
-    'Notes': r['Notes']||'',
-    'Month': r['Month']||'',
+    'Handover to CS': r['Handover to CS']||'',
+    'Reviewed Date': r['Reviewed Date']||'',
+    'Support Comment': r['Support Comment']||'',
+    'Month': r['Payment Month']||'',
   })).filter(r=>r['Doctor Name']);
 }
 
@@ -402,7 +406,7 @@ function buildKPI(){
   const progress=d.filter(r=>r['Status']==='In Progress').length;
   const pending=d.filter(r=>r['Status']==='Pending').length;
   const issue=d.filter(r=>r['Status']==='Issue Raised').length;
-  const curMonth=new Date().toLocaleString('default',{month:'short',year:'2-digit'});
+  const now=new Date();const curMonth=now.toLocaleString('default',{month:'short'})+'-'+String(now.getFullYear()).slice(2);
   const thisMonth=d.filter(r=>r['Month']===curMonth).length;
 
   const kpis=[
@@ -460,28 +464,30 @@ function buildOverview(){
       plugins:{legend:{labels:{font:{size:11},boxWidth:10}}}}
   });
 
-  // Region stacked bar
-  const regions=[...new Set(d.map(r=>r['Region']).filter(Boolean))].sort();
+  // City breakdown (top 10)
+  const cityMap={};
+  d.forEach(r=>{const c=r['City'];if(!c)return;cityMap[c]=(cityMap[c]||0)+1;});
+  const topCities=Object.entries(cityMap).sort((a,b)=>b[1]-a[1]).slice(0,10);
   ovCharts.region=new Chart(document.getElementById('chartRegion'),{
     type:'bar',
-    data:{labels:regions,datasets:[
-      {label:'Setup Done',data:regions.map(rg=>d.filter(r=>r['Region']===rg&&r['Status']==='Setup Done').length),backgroundColor:rgba('#22c55e',.85),borderColor:'#22c55e',borderWidth:1},
-      {label:'In Progress',data:regions.map(rg=>d.filter(r=>r['Region']===rg&&r['Status']==='In Progress').length),backgroundColor:rgba('#3b82f6',.85),borderColor:'#3b82f6',borderWidth:1},
-      {label:'Pending',data:regions.map(rg=>d.filter(r=>r['Region']===rg&&r['Status']==='Pending').length),backgroundColor:rgba('#f59e0b',.85),borderColor:'#f59e0b',borderWidth:1},
-      {label:'Issue Raised',data:regions.map(rg=>d.filter(r=>r['Region']===rg&&r['Status']==='Issue Raised').length),backgroundColor:rgba('#f43f5e',.85),borderColor:'#f43f5e',borderWidth:1},
+    data:{labels:topCities.map(c=>c[0]),datasets:[
+      {label:'Setup Done',data:topCities.map(([c])=>d.filter(r=>r['City']===c&&r['Status']==='Setup Done').length),backgroundColor:rgba('#22c55e',.85),borderColor:'#22c55e',borderWidth:1},
+      {label:'In Progress',data:topCities.map(([c])=>d.filter(r=>r['City']===c&&r['Status']==='In Progress').length),backgroundColor:rgba('#3b82f6',.85),borderColor:'#3b82f6',borderWidth:1},
+      {label:'Pending',data:topCities.map(([c])=>d.filter(r=>r['City']===c&&r['Status']==='Pending').length),backgroundColor:rgba('#f59e0b',.85),borderColor:'#f59e0b',borderWidth:1},
+      {label:'Issue Raised',data:topCities.map(([c])=>d.filter(r=>r['City']===c&&r['Status']==='Issue Raised').length),backgroundColor:rgba('#f43f5e',.85),borderColor:'#f43f5e',borderWidth:1},
     ]},
-    options:{responsive:true,maintainAspectRatio:false,
-      scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:{color:'rgba(255,255,255,.04)'}}},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      scales:{x:{stacked:true,grid:{color:'rgba(255,255,255,.04)'}},y:{stacked:false,grid:{display:false},ticks:{font:{size:10}}}},
       plugins:{legend:{labels:{font:{size:11},boxWidth:10}}}}
   });
 
   // Team workload donut
-  const assignees=[...new Set(d.map(r=>r['Assigned To']).filter(Boolean))].sort();
+  const assignees=[...new Set(d.map(r=>r['Support Member']).filter(Boolean))].sort();
   const COLORS=['#8b5cf6','#14b8a6','#f59e0b','#3b82f6','#f43f5e','#22c55e','#e879f9'];
   ovCharts.team=new Chart(document.getElementById('chartTeam'),{
     type:'doughnut',
     data:{labels:assignees,datasets:[{
-      data:assignees.map(a=>d.filter(r=>r['Assigned To']===a).length),
+      data:assignees.map(a=>d.filter(r=>r['Support Member']===a).length),
       backgroundColor:COLORS.map(c=>rgba(c,.85)),borderColor:COLORS,borderWidth:2
     }]},
     options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
@@ -496,27 +502,29 @@ const TRK_PAGE=20;
 
 function populateTrackerFilters(){
   const months=[...new Set(ALL_RECORDS.map(r=>r['Month']).filter(Boolean))].sort();
-  const regions=[...new Set(ALL_RECORDS.map(r=>r['Region']).filter(Boolean))].sort();
   const ams=[...new Set(ALL_RECORDS.map(r=>r['AM Name']).filter(Boolean))].sort();
-  const assignees=[...new Set(ALL_RECORDS.map(r=>r['Assigned To']).filter(Boolean))].sort();
+  const bdms=[...new Set(ALL_RECORDS.map(r=>r['BDM Name']).filter(Boolean))].sort();
+  const members=[...new Set(ALL_RECORDS.map(r=>r['Support Member']).filter(Boolean))].sort();
   const add=(id,arr)=>{const el=document.getElementById(id);arr.forEach(v=>{el.innerHTML+=`<option>${v}</option>`;});};
-  add('f-month',months); add('f-region',regions); add('f-am',ams); add('f-assigned',assignees);
+  add('f-month',months); add('f-am',ams); add('f-bdm',bdms); add('f-assigned',members);
 }
 
 function getTrackerFiltered(){
   const month=document.getElementById('f-month').value;
-  const region=document.getElementById('f-region').value;
   const am=document.getElementById('f-am').value;
+  const bdm=document.getElementById('f-bdm').value;
   const assigned=document.getElementById('f-assigned').value;
+  const handover=document.getElementById('f-handover').value;
   const status=document.getElementById('f-status').value;
   const search=document.getElementById('f-search').value.toLowerCase().trim();
   return ALL_RECORDS.filter(r=>{
     if(month&&r['Month']!==month) return false;
-    if(region&&r['Region']!==region) return false;
     if(am&&r['AM Name']!==am) return false;
-    if(assigned&&r['Assigned To']!==assigned) return false;
+    if(bdm&&r['BDM Name']!==bdm) return false;
+    if(assigned&&r['Support Member']!==assigned) return false;
+    if(handover&&r['Handover to CS']!==handover) return false;
     if(status&&r['Status']!==status) return false;
-    if(search&&!(r['Doctor Name']+r['Clinic Name']+r['City']).toLowerCase().includes(search)) return false;
+    if(search&&!(r['Doctor Name']+r['City']).toLowerCase().includes(search)) return false;
     return true;
   });
 }
@@ -545,13 +553,14 @@ function renderTracker(){
     <tr>
       <td style="color:var(--muted);font-family:'DM Mono',monospace;font-size:10px">${start+i+1}</td>
       <td style="font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis" title="${r['Doctor Name']}">${r['Doctor Name']}</td>
-      <td style="color:var(--muted);max-width:130px;overflow:hidden;text-overflow:ellipsis" title="${r['Clinic Name']}">${r['Clinic Name']||'—'}</td>
-      <td><span class="badge badge-region" style="font-size:10px">${r['Region']||'—'}</span></td>
+      <td style="color:var(--muted)">${r['City']||'—'}</td>
       <td style="font-size:11px">${r['AM Name']||'—'}</td>
-      <td style="font-weight:500;color:var(--purple)">${r['Assigned To']||'—'}</td>
+      <td style="font-size:11px;color:var(--muted)">${r['BDM Name']||'—'}</td>
+      <td style="font-weight:500;color:var(--purple)">${r['Support Member']||'—'}</td>
       <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--amber)">${r['Month']||'—'}</td>
+      <td><span class="badge" style="background:${r['Handover to CS']==='Yes'?'var(--green-dim)':'var(--amber-dim)'};color:${r['Handover to CS']==='Yes'?'var(--green)':'var(--amber)'};">${r['Handover to CS']||'—'}</span></td>
       <td><span class="badge ${badgeClass(r['Status'])}">${r['Status']||'—'}</span></td>
-      <td style="font-size:11px;color:var(--muted)">${r['Last Follow-up']||'—'}</td>
+      <td style="font-size:11px;color:var(--muted)">${r['Reviewed Date']||'—'}</td>
     </tr>`).join('');
   document.getElementById('tracker-page-info').textContent=
     `Showing ${start+1}–${Math.min(start+TRK_PAGE,recs.length)} of ${recs.length}`;
@@ -565,7 +574,7 @@ function trackerChangePage(dir){
 }
 
 function clearTrackerFilters(){
-  ['f-month','f-region','f-am','f-assigned','f-status'].forEach(id=>document.getElementById(id).value='');
+  ['f-month','f-am','f-bdm','f-assigned','f-handover','f-status'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-search').value='';
   trkPage=0; renderTracker();
 }
@@ -578,7 +587,7 @@ function buildTeam(){
 
   // Assignee progress bars
   const teamStats=assignees.map(a=>{
-    const g=d.filter(r=>r['Assigned To']===a);
+    const g=d.filter(r=>r['Support Member']===a);
     const total=g.length;
     const done=g.filter(r=>r['Status']==='Setup Done').length;
     return {name:a,total,done,rate:total?+(done/total*100).toFixed(1):0};
@@ -598,7 +607,7 @@ function buildTeam(){
 
   // Team table
   document.getElementById('teamTableBody').innerHTML=teamStats.map(t=>{
-    const g=d.filter(r=>r['Assigned To']===t.name);
+    const g=d.filter(r=>r['Support Member']===t.name);
     const progress=g.filter(r=>r['Status']==='In Progress').length;
     const pending=g.filter(r=>r['Status']==='Pending').length;
     const issue=g.filter(r=>r['Status']==='Issue Raised').length;
