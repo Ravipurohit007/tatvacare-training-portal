@@ -365,7 +365,7 @@ function computeData(rows){
     'AM Name': r['AM Name']||'',
     'BDM Name': r['BDM Name']||'',
     'Onboarding Date': r['Onboarding Date']||'',
-    'Support Member': r['Support Member']||'',
+    'Support Member': (r['Support Member']||'').trim(),
     'Status': normalizeStatus(r['Status']),
     'Handover to CS': r['Handover to CS']||'',
     'Reviewed Date': r['Reviewed Date']||'',
@@ -489,7 +489,7 @@ function buildOverview(){
   });
 
   // Team workload donut
-  const memberOf=r=>r['Support Member']||'Not Assigned';
+  const memberOf=r=>(r['Support Member']||'').trim()||'Not Assigned';
   const assignees=[...new Set(d.map(memberOf))].sort((a,b)=>{
     if(a==='Not Assigned') return 1;
     if(b==='Not Assigned') return -1;
