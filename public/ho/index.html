@@ -28,12 +28,74 @@
     color: #fff; text-decoration: none; font-size: 14px; font-weight: 600;
   }
   a:hover { opacity: 0.9; }
+
+  /* Password gate */
+  #pwd-gate {
+    position: fixed; inset: 0; z-index: 9999;
+    background: linear-gradient(135deg, #f5eefa 0%, #f8f4ff 50%, #eef2ff 100%);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .pwd-box {
+    background: #fff; border: 1px solid #e9d8f5; border-radius: 16px;
+    padding: 40px 48px; width: 340px; text-align: center;
+    box-shadow: 0 4px 24px rgba(67,45,133,0.1);
+  }
+  .pwd-box .icon { font-size: 32px; margin-bottom: 12px; }
+  .pwd-box h2 { font-size: 17px; font-weight: 700; color: #432d85; margin-bottom: 6px; }
+  .pwd-box .sub { font-size: 12px; color: #9ca3af; margin-bottom: 24px; }
+  .pwd-box input {
+    width: 100%; border: 1px solid #e9d8f5; border-radius: 8px;
+    padding: 10px 14px; font-size: 14px; font-family: 'DM Sans', sans-serif;
+    outline: none; margin-bottom: 8px; color: #1f2937;
+  }
+  .pwd-box input:focus { border-color: #703b96; }
+  .pwd-error { color: #ef4444; font-size: 12px; min-height: 16px; margin-bottom: 8px; }
+  .pwd-box button {
+    width: 100%; background: linear-gradient(90deg, #432d85, #703b96);
+    color: #fff; border: none; padding: 11px; border-radius: 8px;
+    font-size: 14px; font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif;
+  }
+  .pwd-box button:hover { opacity: 0.9; }
 </style>
 </head>
 <body>
-  <div class="logo">T</div>
-  <h1>Handover Updates</h1>
-  <p>This section is coming soon.</p>
-  <a href="https://training-handover-app.vercel.app/">← Back to Portal</a>
+
+<!-- Password Gate -->
+<div id="pwd-gate">
+  <div class="pwd-box">
+    <div class="icon">&#128274;</div>
+    <h2>Handover Updates</h2>
+    <p class="sub">Enter password to continue</p>
+    <input id="pwd-input" type="password" placeholder="Password" autocomplete="off"
+      onkeydown="if(event.key==='Enter')checkPwd()">
+    <div id="pwd-error" class="pwd-error"></div>
+    <button onclick="checkPwd()">Unlock</button>
+  </div>
+</div>
+<script>
+(function(){
+  if(sessionStorage.getItem("ho_auth")==="1"){
+    document.getElementById("pwd-gate").style.display="none";
+  }
+})();
+function checkPwd(){
+  const v=document.getElementById("pwd-input").value;
+  if(v==="handover2026"){
+    sessionStorage.setItem("ho_auth","1");
+    document.getElementById("pwd-gate").style.display="none";
+  }else{
+    document.getElementById("pwd-error").textContent="Incorrect password.";
+    document.getElementById("pwd-input").value="";
+    document.getElementById("pwd-input").focus();
+  }
+}
+</script>
+
+<!-- Page Content (shown after unlock) -->
+<div class="logo">T</div>
+<h1>Handover Updates</h1>
+<p>This section is coming soon.</p>
+<a href="https://training-handover-app.vercel.app/">&#8592; Back to Portal</a>
+
 </body>
 </html>
