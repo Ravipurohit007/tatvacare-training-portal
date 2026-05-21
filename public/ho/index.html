@@ -244,10 +244,9 @@ function checkPwd(){
       <span class="filter-label">STATUS:</span>
       <select id="f-status" onchange="renderTracker()">
         <option value="">All</option>
-        <option>Setup Done</option>
-        <option>In Progress</option>
+        <option>Approved</option>
         <option>Pending</option>
-        <option>Issue Raised</option>
+        <option>Rejected</option>
       </select>
     </div>
     <div class="filter-row">
@@ -338,11 +337,18 @@ const STATUS_COLORS = {
   'Rejected': '#f43f5e',
 };
 
+function normalizeStatus(s){
+  const v=(s||'').trim().toLowerCase();
+  if(v==='approved') return 'Approved';
+  if(v==='pending') return 'Pending';
+  if(v==='rejected') return 'Rejected';
+  return (s||'').trim();
+}
+
 function badgeClass(s){
-  if(s==='Setup Done') return 'badge-done';
-  if(s==='In Progress') return 'badge-progress';
+  if(s==='Approved') return 'badge-done';
   if(s==='Pending') return 'badge-pending';
-  if(s==='Issue Raised') return 'badge-issue';
+  if(s==='Rejected') return 'badge-issue';
   return '';
 }
 
@@ -360,7 +366,7 @@ function computeData(rows){
     'BDM Name': r['BDM Name']||'',
     'Onboarding Date': r['Onboarding Date']||'',
     'Support Member': r['Support Member']||'',
-    'Status': r['Status']||'',
+    'Status': normalizeStatus(r['Status']),
     'Handover to CS': r['Handover to CS']||'',
     'Reviewed Date': r['Reviewed Date']||'',
     'Support Comment': r['Support Comment']||'',
