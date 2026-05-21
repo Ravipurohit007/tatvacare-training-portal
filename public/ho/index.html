@@ -189,6 +189,10 @@ function checkPwd(){
 
 <!-- OVERVIEW -->
 <div id="view-overview" class="view active">
+  <div class="filter-row" style="margin-bottom:16px;">
+    <span class="filter-label">MONTH:</span>
+    <select id="ov-month" onchange="ovMonth=this.value;buildKPI();buildOverview()"><option value="">All Months</option></select>
+  </div>
   <div class="kpi-row" id="kpiRow"></div>
   <div class="grid-2">
     <div class="card">
@@ -327,11 +331,11 @@ const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSkhiNwt1R8yN
 
 // ── Data ──────────────────────────────────────────────────────
 let ALL_RECORDS = [];
+let ovMonth = '';
 const STATUS_COLORS = {
-  'Setup Done': '#22c55e',
-  'In Progress': '#3b82f6',
+  'Approved': '#22c55e',
   'Pending': '#f59e0b',
-  'Issue Raised': '#f43f5e',
+  'Rejected': '#f43f5e',
 };
 
 function badgeClass(s){
@@ -400,21 +404,21 @@ function showView(id,el){
 
 // ── KPI ───────────────────────────────────────────────────────
 function buildKPI(){
-  const d=ALL_RECORDS;
+  const d=ovMonth?ALL_RECORDS.filter(r=>r['Month']===ovMonth):ALL_RECORDS;
   const total=d.length;
-  const done=d.filter(r=>r['Status']==='Setup Done').length;
-  const progress=d.filter(r=>r['Status']==='In Progress').length;
+  const uploaded=d.filter(r=>r['Handover to CS']==='Yes').length;
+  const approved=d.filter(r=>r['Status']==='Approved').length;
   const pending=d.filter(r=>r['Status']==='Pending').length;
-  const issue=d.filter(r=>r['Status']==='Issue Raised').length;
+  const rejected=d.filter(r=>r['Status']==='Rejected').length;
   const now=new Date();const curMonth=now.toLocaleString('default',{month:'short'})+'-'+String(now.getFullYear()).slice(2);
-  const thisMonth=d.filter(r=>r['Month']===curMonth).length;
+  const thisMonth=ALL_RECORDS.filter(r=>r['Month']===curMonth).length;
 
   const kpis=[
-    {label:'Total Handovers',value:total,sub:'All time',color:'#8b5cf6'},
-    {label:'Setup Done',value:done,sub:total?((done/total)*100).toFixed(1)+'% completion rate':'—',color:'#22c55e'},
-    {label:'In Progress',value:progress,sub:'Active onboarding',color:'#3b82f6'},
-    {label:'Pending',value:pending,sub:'Awaiting start',color:'#f59e0b'},
-    {label:'Issue Raised',value:issue,sub:'Need attention',color:'#f43f5e'},
+    {label:'Total Onboarded Doctors',value:total,sub:ovMonth?ovMonth:'All time',color:'#8b5cf6'},
+    {label:'Doctors Details Uploaded in Handover Portal',value:uploaded,sub:total?((uploaded/total)*100).toFixed(1)+'% of total':'—',color:'#22c55e'},
+    {label:'Handover Completed',value:approved,sub:'Status: Approved',color:'#3b82f6'},
+    {label:'Handover Pending',value:pending,sub:'Status: Pending',color:'#f59e0b'},
+    {label:'Handover Rejected',value:rejected,sub:'Status: Rejected',color:'#f43f5e'},
     {label:'This Month',value:thisMonth,sub:curMonth,color:'#14b8a6'},
   ];
   document.getElementById('kpiRow').innerHTML=kpis.map(k=>`
@@ -430,10 +434,10 @@ function buildKPI(){
 let ovCharts={};
 function buildOverview(){
   Object.values(ovCharts).forEach(c=>c.destroy()); ovCharts={};
-  const d=ALL_RECORDS;
+  const d=ovMonth?ALL_RECORDS.filter(r=>r['Month']===ovMonth):ALL_RECORDS;
 
   // Status donut
-  const statuses=['Setup Done','In Progress','Pending','Issue Raised'];
+  const statuses=['Approved','Pending','Rejected'];
   ovCharts.status=new Chart(document.getElementById('chartStatus'),{
     type:'doughnut',
     data:{labels:statuses,datasets:[{
@@ -446,18 +450,17 @@ function buildOverview(){
       tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw} (${d.length?(ctx.raw/d.length*100).toFixed(1):0}%)`}}}}
   });
 
-  // Monthly bar
-  const months=[...new Set(d.map(r=>r['Month']).filter(Boolean))].sort((a,b)=>{
+  // Monthly bar (always shows all months for trend view)
+  const allMonths=[...new Set(ALL_RECORDS.map(r=>r['Month']).filter(Boolean))].sort((a,b)=>{
     const toDate=m=>{const p=m.split('-');const mn={Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};return new Date(2000+parseInt(p[1]),mn[p[0]]);};
     return toDate(a)-toDate(b);
   });
   ovCharts.monthly=new Chart(document.getElementById('chartMonthly'),{
     type:'bar',
-    data:{labels:months,datasets:[
-      {label:'Setup Done',data:months.map(m=>d.filter(r=>r['Month']===m&&r['Status']==='Setup Done').length),backgroundColor:rgba('#22c55e',.85),borderColor:'#22c55e',borderWidth:1},
-      {label:'In Progress',data:months.map(m=>d.filter(r=>r['Month']===m&&r['Status']==='In Progress').length),backgroundColor:rgba('#3b82f6',.85),borderColor:'#3b82f6',borderWidth:1},
-      {label:'Pending',data:months.map(m=>d.filter(r=>r['Month']===m&&r['Status']==='Pending').length),backgroundColor:rgba('#f59e0b',.85),borderColor:'#f59e0b',borderWidth:1},
-      {label:'Issue Raised',data:months.map(m=>d.filter(r=>r['Month']===m&&r['Status']==='Issue Raised').length),backgroundColor:rgba('#f43f5e',.85),borderColor:'#f43f5e',borderWidth:1},
+    data:{labels:allMonths,datasets:[
+      {label:'Approved',data:allMonths.map(m=>ALL_RECORDS.filter(r=>r['Month']===m&&r['Status']==='Approved').length),backgroundColor:rgba('#22c55e',.85),borderColor:'#22c55e',borderWidth:1},
+      {label:'Pending',data:allMonths.map(m=>ALL_RECORDS.filter(r=>r['Month']===m&&r['Status']==='Pending').length),backgroundColor:rgba('#f59e0b',.85),borderColor:'#f59e0b',borderWidth:1},
+      {label:'Rejected',data:allMonths.map(m=>ALL_RECORDS.filter(r=>r['Month']===m&&r['Status']==='Rejected').length),backgroundColor:rgba('#f43f5e',.85),borderColor:'#f43f5e',borderWidth:1},
     ]},
     options:{responsive:true,maintainAspectRatio:false,
       scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:{color:'rgba(255,255,255,.04)'}}},
@@ -471,10 +474,9 @@ function buildOverview(){
   ovCharts.region=new Chart(document.getElementById('chartRegion'),{
     type:'bar',
     data:{labels:topCities.map(c=>c[0]),datasets:[
-      {label:'Setup Done',data:topCities.map(([c])=>d.filter(r=>r['City']===c&&r['Status']==='Setup Done').length),backgroundColor:rgba('#22c55e',.85),borderColor:'#22c55e',borderWidth:1},
-      {label:'In Progress',data:topCities.map(([c])=>d.filter(r=>r['City']===c&&r['Status']==='In Progress').length),backgroundColor:rgba('#3b82f6',.85),borderColor:'#3b82f6',borderWidth:1},
+      {label:'Approved',data:topCities.map(([c])=>d.filter(r=>r['City']===c&&r['Status']==='Approved').length),backgroundColor:rgba('#22c55e',.85),borderColor:'#22c55e',borderWidth:1},
       {label:'Pending',data:topCities.map(([c])=>d.filter(r=>r['City']===c&&r['Status']==='Pending').length),backgroundColor:rgba('#f59e0b',.85),borderColor:'#f59e0b',borderWidth:1},
-      {label:'Issue Raised',data:topCities.map(([c])=>d.filter(r=>r['City']===c&&r['Status']==='Issue Raised').length),backgroundColor:rgba('#f43f5e',.85),borderColor:'#f43f5e',borderWidth:1},
+      {label:'Rejected',data:topCities.map(([c])=>d.filter(r=>r['City']===c&&r['Status']==='Rejected').length),backgroundColor:rgba('#f43f5e',.85),borderColor:'#f43f5e',borderWidth:1},
     ]},
     options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
       scales:{x:{stacked:true,grid:{color:'rgba(255,255,255,.04)'}},y:{stacked:false,grid:{display:false},ticks:{font:{size:10}}}},
@@ -507,6 +509,7 @@ function populateTrackerFilters(){
   const members=[...new Set(ALL_RECORDS.map(r=>r['Support Member']).filter(Boolean))].sort();
   const add=(id,arr)=>{const el=document.getElementById(id);arr.forEach(v=>{el.innerHTML+=`<option>${v}</option>`;});};
   add('f-month',months); add('f-am',ams); add('f-bdm',bdms); add('f-assigned',members);
+  add('ov-month',months);
 }
 
 function getTrackerFiltered(){
