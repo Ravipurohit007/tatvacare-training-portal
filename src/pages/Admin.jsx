@@ -63,11 +63,12 @@ function downloadExcel(submissions) {
 }
 
 const STATUS_BADGE = {
-  approved: 'bg-green-100 text-green-700',
-  rejected: 'bg-red-100 text-red-700',
-  pending:  'bg-amber-100 text-amber-700',
+  approved:    'bg-green-100 text-green-700',
+  rejected:    'bg-red-100 text-red-700',
+  pending:     'bg-amber-100 text-amber-700',
+  in_progress: 'bg-blue-100 text-blue-700',
 }
-const STATUS_LABEL = { approved: '✓ Approved', rejected: '✗ Rejected', pending: '⏳ Pending' }
+const STATUS_LABEL = { approved: '✓ Approved', rejected: '✗ Rejected', pending: '⏳ Pending', in_progress: '🔄 In Progress' }
 
 // ── Login ─────────────────────────────────────────────────────────────────────
 function LoginScreen({ onLogin }) {
@@ -182,51 +183,79 @@ function ReviewModal({ submission, onClose, onSave, onLogCall }) {
         </div>
 
         {/* Decision cards */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="grid grid-cols-3 gap-2 mb-4">
           <button type="button" onClick={() => setDecision('approved')}
-            className={`rounded-xl border-2 p-4 text-left transition-all ${
+            className={`rounded-xl border-2 p-3 text-left transition-all ${
               decision === 'approved' ? 'bg-green-50 border-green-500' : 'bg-white border-slate-200 hover:border-green-300'
             }`}>
             <div className="flex items-center gap-2 mb-1">
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center ${decision === 'approved' ? 'bg-green-500' : 'bg-slate-100'}`}>
-                <svg className={`w-4 h-4 ${decision === 'approved' ? 'text-white' : 'text-slate-400'}`}
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${decision === 'approved' ? 'bg-green-500' : 'bg-slate-100'}`}>
+                <svg className={`w-3.5 h-3.5 ${decision === 'approved' ? 'text-white' : 'text-slate-400'}`}
                   fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
               <span className={`font-bold text-sm ${decision === 'approved' ? 'text-green-700' : 'text-slate-600'}`}>Approve</span>
             </div>
-            <p className="text-xs text-slate-400 pl-9">Training complete. Certificate will be enabled.</p>
+            <p className="text-xs text-slate-400 pl-8">Training complete.</p>
+          </button>
+
+          <button type="button" onClick={() => setDecision('in_progress')}
+            className={`rounded-xl border-2 p-3 text-left transition-all ${
+              decision === 'in_progress' ? 'bg-blue-50 border-blue-500' : 'bg-white border-slate-200 hover:border-blue-300'
+            }`}>
+            <div className="flex items-center gap-2 mb-1">
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${decision === 'in_progress' ? 'bg-blue-500' : 'bg-slate-100'}`}>
+                <svg className={`w-3.5 h-3.5 ${decision === 'in_progress' ? 'text-white' : 'text-slate-400'}`}
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <span className={`font-bold text-sm ${decision === 'in_progress' ? 'text-blue-700' : 'text-slate-600'}`}>In Progress</span>
+            </div>
+            <p className="text-xs text-slate-400 pl-8">No answer / callback.</p>
           </button>
 
           <button type="button" onClick={() => setDecision('rejected')}
-            className={`rounded-xl border-2 p-4 text-left transition-all ${
+            className={`rounded-xl border-2 p-3 text-left transition-all ${
               decision === 'rejected' ? 'bg-red-50 border-red-500' : 'bg-white border-slate-200 hover:border-red-300'
             }`}>
             <div className="flex items-center gap-2 mb-1">
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center ${decision === 'rejected' ? 'bg-red-500' : 'bg-slate-100'}`}>
-                <svg className={`w-4 h-4 ${decision === 'rejected' ? 'text-white' : 'text-slate-400'}`}
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${decision === 'rejected' ? 'bg-red-500' : 'bg-slate-100'}`}>
+                <svg className={`w-3.5 h-3.5 ${decision === 'rejected' ? 'text-white' : 'text-slate-400'}`}
                   fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </div>
               <span className={`font-bold text-sm ${decision === 'rejected' ? 'text-red-700' : 'text-slate-600'}`}>Reject</span>
             </div>
-            <p className="text-xs text-slate-400 pl-9">Incomplete training. Reason required.</p>
+            <p className="text-xs text-slate-400 pl-8">Incomplete training.</p>
           </button>
         </div>
 
         {/* Comment */}
         {decision && (
-          <div className={`rounded-lg p-3 mb-4 ${decision === 'approved' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
-            <label className={`block text-sm font-semibold mb-1.5 ${decision === 'approved' ? 'text-green-700' : 'text-red-700'}`}>
-              {decision === 'rejected' ? 'Rejection Reason *' : 'Approval Note (optional)'}
+          <div className={`rounded-lg p-3 mb-4 ${
+            decision === 'approved' ? 'bg-green-50 border border-green-200' :
+            decision === 'in_progress' ? 'bg-blue-50 border border-blue-200' :
+            'bg-red-50 border border-red-200'
+          }`}>
+            <label className={`block text-sm font-semibold mb-1.5 ${
+              decision === 'approved' ? 'text-green-700' :
+              decision === 'in_progress' ? 'text-blue-700' :
+              'text-red-700'
+            }`}>
+              {decision === 'rejected' ? 'Rejection Reason *' :
+               decision === 'in_progress' ? 'Callback / Follow-up Note *' :
+               'Approval Note (optional)'}
             </label>
             <textarea
               className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none"
               rows={3}
               placeholder={decision === 'rejected'
                 ? 'e.g. Pharmacy module not completed. Re-training required.'
+                : decision === 'in_progress'
+                ? 'e.g. Doctor did not pick up. Will call back tomorrow at 4 PM.'
                 : 'e.g. All modules completed. Doctor is ready to use the system.'}
               value={comment}
               onChange={(e) => setComment(e.target.value)}
@@ -240,7 +269,9 @@ function ReviewModal({ submission, onClose, onSave, onLogCall }) {
             onClick={handleSave}
             disabled={!canSave || saving}
             className={`flex-1 flex items-center justify-center gap-2 font-semibold py-2.5 px-5 rounded-lg transition-colors text-white disabled:opacity-50 disabled:cursor-not-allowed ${
-              decision === 'rejected' ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
+              decision === 'rejected' ? 'bg-red-600 hover:bg-red-700' :
+              decision === 'in_progress' ? 'bg-blue-600 hover:bg-blue-700' :
+              'bg-green-600 hover:bg-green-700'
             }`}
           >
             {saving && (
@@ -263,6 +294,7 @@ function DetailModal({ submission, onClose, onReview }) {
   const status = submission.handoverStatus || 'pending'
   const isApproved = status === 'approved'
   const isPending = status === 'pending'
+  const isInProgress = status === 'in_progress'
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -317,9 +349,19 @@ function DetailModal({ submission, onClose, onReview }) {
           {(submission.supportComment || submission.additionalComments) && (
             <div className="space-y-2">
               {submission.supportComment && (
-                <div className={`rounded-lg px-3 py-2 text-sm ${isApproved ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
-                  <p className={`text-xs font-semibold mb-0.5 ${isApproved ? 'text-green-700' : 'text-red-700'}`}>
-                    {isApproved ? 'Support Approval Note' : 'Support Rejection Reason'}
+                <div className={`rounded-lg px-3 py-2 text-sm ${
+                  isApproved ? 'bg-green-50 border border-green-200' :
+                  isInProgress ? 'bg-blue-50 border border-blue-200' :
+                  'bg-red-50 border border-red-200'
+                }`}>
+                  <p className={`text-xs font-semibold mb-0.5 ${
+                    isApproved ? 'text-green-700' :
+                    isInProgress ? 'text-blue-700' :
+                    'text-red-700'
+                  }`}>
+                    {isApproved ? 'Support Approval Note' :
+                     isInProgress ? 'In Progress Note' :
+                     'Support Rejection Reason'}
                   </p>
                   <p className="text-slate-700">{submission.supportComment}</p>
                 </div>
@@ -364,11 +406,11 @@ function DetailModal({ submission, onClose, onReview }) {
 
           {/* Action buttons */}
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
-            {isPending && (
+            {(isPending || isInProgress) && (
               <button onClick={() => { onClose(); onReview(submission) }}
                 className="flex-1 text-white font-semibold text-sm py-2.5 px-5 rounded-lg transition-colors"
                 style={{ background: 'linear-gradient(90deg,#432d85,#703b96)' }}>
-                Review This Submission
+                {isInProgress ? 'Update Status' : 'Review This Submission'}
               </button>
             )}
             <button
@@ -523,7 +565,7 @@ export default function Admin() {
 
   if (!authed) return <LoginScreen onLogin={() => setAuthed(true)} />
 
-  const counts = { all: submissions.length, pending: 0, approved: 0, rejected: 0 }
+  const counts = { all: submissions.length, pending: 0, approved: 0, rejected: 0, in_progress: 0 }
   submissions.forEach((s) => {
     const st = s.handoverStatus || 'pending'
     if (counts[st] !== undefined) counts[st]++
@@ -539,10 +581,11 @@ export default function Admin() {
   })
 
   const tabs = [
-    { key: 'all',      label: 'All',      color: 'text-slate-600' },
-    { key: 'pending',  label: 'Pending',  color: 'text-amber-600' },
-    { key: 'approved', label: 'Approved', color: 'text-green-600' },
-    { key: 'rejected', label: 'Rejected', color: 'text-red-600'   },
+    { key: 'all',         label: 'All',         color: 'text-slate-600' },
+    { key: 'pending',     label: 'Pending',     color: 'text-amber-600' },
+    { key: 'in_progress', label: 'In Progress', color: 'text-blue-600'  },
+    { key: 'approved',    label: 'Approved',    color: 'text-green-600' },
+    { key: 'rejected',    label: 'Rejected',    color: 'text-red-600'   },
   ]
 
   return (
@@ -664,7 +707,7 @@ export default function Admin() {
                   {filtered.map((s, i) => {
                     const st = s.handoverStatus || 'pending'
                     const isApproved = st === 'approved'
-                    const isPending = st === 'pending'
+                    const isPending = st === 'pending' || st === 'in_progress'
                     return (
                       <tr key={s.id || i} className="hover:bg-slate-50 transition-colors">
                         <td className="px-4 py-3 text-slate-400 text-xs">{i + 1}</td>
