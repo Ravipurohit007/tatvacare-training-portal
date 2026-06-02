@@ -507,7 +507,7 @@ export default function Admin() {
     }
 
     loadData()
-    const interval = setInterval(loadData, 180000)
+    const interval = setInterval(loadData, 900000)
     return () => { cancelled = true; clearInterval(interval) }
   }, [authed, refreshTick])
 
