@@ -30,7 +30,7 @@ function downloadExcel(submissions) {
   const headers = [
     '#', 'Doctor Name', 'Doctor Phone', 'City / State', 'Clinic Name', 'Clinic Type',
     'Support Member', 'BDM Name', 'BDM Phone', 'AM Name',
-    'Training Date', 'Submission Date', 'Status', 'Reviewed Date', 'Support Comment', 'Yes Modules'
+    'Onboarding Date', 'Training Date', 'Submission Date', 'Status', 'Reviewed Date', 'Support Comment', 'Yes Modules'
   ]
   const escape = (v) => {
     const s = v == null ? '' : String(v)
@@ -47,6 +47,7 @@ function downloadExcel(submissions) {
     s.bdmName || '',
     s.bdmPhone || '',
     s.amName || '',
+    s.onboardingDate ? formatDate(s.onboardingDate) : '',
     s.trainingDate ? formatDate(s.trainingDate) : '',
     s.submittedAt ? formatDateTime(s.submittedAt) : '',
     s.handoverStatus || 'pending',
