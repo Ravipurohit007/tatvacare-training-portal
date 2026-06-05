@@ -285,8 +285,8 @@ function checkPwd(){
 <div id="view-team" class="view">
   <div class="grid-2">
     <div class="card">
-      <div class="card-title">🏆 Setup Done Rate — by Assignee</div>
-      <div class="card-sub">% of assigned doctors with Setup Done</div>
+      <div class="card-title">🏆 Approval Rate — by Support Member</div>
+      <div class="card-sub">% of assigned doctors with Approved status</div>
       <div id="teamProgressList" class="progress-list" style="margin-top:8px;"></div>
     </div>
     <div class="card">
@@ -295,7 +295,7 @@ function checkPwd(){
       <div class="tbl-wrap" style="max-height:420px;overflow-y:auto;">
         <table>
           <thead><tr>
-            <th>ASSIGNEE</th><th>TOTAL</th><th>✅ DONE</th><th>🔵 IN PROGRESS</th><th>⏳ PENDING</th><th>🔴 ISSUE</th><th>DONE %</th>
+            <th>SUPPORT MEMBER</th><th>TOTAL</th><th>✅ APPROVED</th><th>🔵 IN PROGRESS</th><th>⏳ PENDING</th><th>🔴 REJECTED</th><th>APPROVED %</th>
           </tr></thead>
           <tbody id="teamTableBody"></tbody>
         </table>
@@ -640,53 +640,54 @@ function clearTrackerFilters(){
 // ── Team Performance ──────────────────────────────────────────
 function buildTeam(){
   const d=ALL_RECORDS;
-  const assignees=[...new Set(d.map(r=>r['Assigned To']).filter(Boolean))].sort();
   const COLORS=['#8b5cf6','#14b8a6','#f59e0b','#3b82f6','#f43f5e','#22c55e','#e879f9'];
 
-  // Assignee progress bars
-  const teamStats=assignees.map(a=>{
-    const g=d.filter(r=>r['Support Member']===a);
+  // Support member stats
+  const members=[...new Set(d.map(r=>(r['Support Member']||'').trim()).filter(v=>v&&v!=='-'))].sort();
+  const teamStats=members.map(m=>{
+    const g=d.filter(r=>(r['Support Member']||'').trim()===m);
     const total=g.length;
-    const done=g.filter(r=>r['Status']==='Setup Done').length;
-    return {name:a,total,done,rate:total?+(done/total*100).toFixed(1):0};
+    const approved=g.filter(r=>r['Status']==='Approved').length;
+    const pending=g.filter(r=>r['Status']==='Pending').length;
+    const inProgress=g.filter(r=>r['Status']==='In Progress').length;
+    const rejected=g.filter(r=>r['Status']==='Rejected').length;
+    const rate=total?+(approved/total*100).toFixed(1):0;
+    return {name:m,total,approved,pending,inProgress,rejected,rate};
   }).sort((a,b)=>b.rate-a.rate);
 
   const maxRate=Math.max(...teamStats.map(t=>t.rate),1);
-  document.getElementById('teamProgressList').innerHTML=teamStats.map((t,i)=>`
+  document.getElementById('teamProgressList').innerHTML=teamStats.length?teamStats.map((t,i)=>`
     <div class="progress-item">
       <div class="progress-header">
         <span class="progress-name">${t.name}</span>
-        <span class="progress-val">${t.done}/${t.total} · ${t.rate}%</span>
+        <span class="progress-val">${t.approved}/${t.total} · ${t.rate}%</span>
       </div>
       <div class="progress-bar">
         <div class="progress-fill" style="width:${(t.rate/maxRate)*100}%;background:${COLORS[i%COLORS.length]}"></div>
       </div>
-    </div>`).join('');
+    </div>`).join(''):'<p style="color:var(--muted);font-size:12px">No data</p>';
 
-  // Team table
-  document.getElementById('teamTableBody').innerHTML=teamStats.map(t=>{
-    const g=d.filter(r=>r['Support Member']===t.name);
-    const progress=g.filter(r=>r['Status']==='In Progress').length;
-    const pending=g.filter(r=>r['Status']==='Pending').length;
-    const issue=g.filter(r=>r['Status']==='Issue Raised').length;
-    return `<tr>
+  document.getElementById('teamTableBody').innerHTML=teamStats.map(t=>`
+    <tr>
       <td style="font-weight:500">${t.name}</td>
       <td style="font-family:'DM Mono',monospace">${t.total}</td>
-      <td style="color:var(--green);font-family:'DM Mono',monospace">${t.done}</td>
-      <td style="color:var(--blue);font-family:'DM Mono',monospace">${progress}</td>
-      <td style="color:var(--amber);font-family:'DM Mono',monospace">${pending}</td>
-      <td style="color:var(--red);font-family:'DM Mono',monospace">${issue}</td>
+      <td style="color:var(--green);font-family:'DM Mono',monospace">${t.approved}</td>
+      <td style="color:var(--blue);font-family:'DM Mono',monospace">${t.inProgress}</td>
+      <td style="color:var(--amber);font-family:'DM Mono',monospace">${t.pending}</td>
+      <td style="color:var(--red);font-family:'DM Mono',monospace">${t.rejected}</td>
       <td><span style="color:${t.rate>=70?'var(--green)':t.rate>=40?'var(--amber)':'var(--red)'};font-weight:700;font-family:'DM Mono',monospace">${t.rate}%</span></td>
-    </tr>`;
-  }).join('');
+    </tr>`).join('');
 
-  // AM progress bars
+  // AM stats
   const ams=[...new Set(d.map(r=>r['AM Name']).filter(Boolean))].sort();
   const amStats=ams.map(a=>{
     const g=d.filter(r=>r['AM Name']===a);
     const total=g.length;
-    const done=g.filter(r=>r['Status']==='Setup Done').length;
-    return {name:a,total,done,rate:total?+(done/total*100).toFixed(1):0};
+    const approved=g.filter(r=>r['Status']==='Approved').length;
+    const pending=g.filter(r=>r['Status']==='Pending'||r['Status']==='In Progress').length;
+    const rejected=g.filter(r=>r['Status']==='Rejected').length;
+    const rate=total?+(approved/total*100).toFixed(1):0;
+    return {name:a,total,approved,pending,rejected,rate};
   }).sort((a,b)=>b.rate-a.rate);
 
   const maxAmRate=Math.max(...amStats.map(t=>t.rate),1);
@@ -694,26 +695,22 @@ function buildTeam(){
     <div class="progress-item">
       <div class="progress-header">
         <span class="progress-name">${t.name}</span>
-        <span class="progress-val">${t.done}/${t.total} · ${t.rate}%</span>
+        <span class="progress-val">${t.approved}/${t.total} · ${t.rate}%</span>
       </div>
       <div class="progress-bar">
         <div class="progress-fill" style="width:${(t.rate/maxAmRate)*100}%;background:${COLORS[i%COLORS.length]}"></div>
       </div>
     </div>`).join('');
 
-  document.getElementById('amTableBody').innerHTML=amStats.map(t=>{
-    const g=d.filter(r=>r['AM Name']===t.name);
-    const pendingProg=g.filter(r=>r['Status']==='In Progress'||r['Status']==='Pending').length;
-    const issue=g.filter(r=>r['Status']==='Issue Raised').length;
-    return `<tr>
+  document.getElementById('amTableBody').innerHTML=amStats.map(t=>`
+    <tr>
       <td style="font-weight:500">${t.name}</td>
       <td style="font-family:'DM Mono',monospace">${t.total}</td>
-      <td style="color:var(--green);font-family:'DM Mono',monospace">${t.done}</td>
-      <td style="color:var(--amber);font-family:'DM Mono',monospace">${pendingProg}</td>
-      <td style="color:var(--red);font-family:'DM Mono',monospace">${issue}</td>
+      <td style="color:var(--green);font-family:'DM Mono',monospace">${t.approved}</td>
+      <td style="color:var(--amber);font-family:'DM Mono',monospace">${t.pending}</td>
+      <td style="color:var(--red);font-family:'DM Mono',monospace">${t.rejected}</td>
       <td><span style="color:${t.rate>=70?'var(--green)':t.rate>=40?'var(--amber)':'var(--red)'};font-weight:700;font-family:'DM Mono',monospace">${t.rate}%</span></td>
-    </tr>`;
-  }).join('');
+    </tr>`).join('');
 }
 
 // ── Init ──────────────────────────────────────────────────────
