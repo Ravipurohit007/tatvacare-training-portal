@@ -342,13 +342,15 @@ function normalizeStatus(s){
   if(v==='approved') return 'Approved';
   if(v==='pending') return 'Pending';
   if(v==='rejected') return 'Rejected';
-  return (s||'').trim();
+  if(v==='in_progress'||v==='in progress') return 'In Progress';
+  return '';
 }
 
 function badgeClass(s){
   if(s==='Approved') return 'badge-done';
   if(s==='Pending') return 'badge-pending';
   if(s==='Rejected') return 'badge-issue';
+  if(s==='In Progress') return 'badge-progress';
   return '';
 }
 
@@ -372,7 +374,7 @@ function computeData(rows){
     'Reviewed Date': r['Reviewed Date']||'',
     'Support Comment': r['Support Comment']||'',
     'Month': r['Payment Month']||'',
-  })).filter(r=>r['Doctor Name']);
+  })).filter(r=>r['Doctor Name'] && r['Doctor Name']!=='Doctor Name');
 }
 
 // ── Fetch ─────────────────────────────────────────────────────
@@ -416,16 +418,18 @@ function buildKPI(){
   const uploaded=d.filter(r=>r['Dr. Doc from Sales to CS']==='Yes').length;
   const approved=d.filter(r=>r['Status']==='Approved').length;
   const pending=d.filter(r=>r['Status']==='Pending').length;
+  const inProgress=d.filter(r=>r['Status']==='In Progress').length;
   const rejected=d.filter(r=>r['Status']==='Rejected').length;
-  const now=new Date();const curMonth=now.toLocaleString('default',{month:'short'})+'-'+String(now.getFullYear()).slice(2);
-  const thisMonth=ALL_RECORDS.filter(r=>r['Month']===curMonth).length;
+  const notStarted=d.filter(r=>r['Status']==='').length;
 
   const kpis=[
     {label:'Total Onboarded Doctors',value:total,sub:ovMonth?ovMonth:'All time',color:'#8b5cf6'},
     {label:'Doctors Details Uploaded in Handover Portal',value:uploaded,sub:total?((uploaded/total)*100).toFixed(1)+'% of total':'—',color:'#22c55e'},
     {label:'Handover Completed',value:approved,sub:'Status: Approved',color:'#3b82f6'},
     {label:'Handover Pending',value:pending,sub:'Status: Pending',color:'#f59e0b'},
+    {label:'In Progress',value:inProgress,sub:'Status: In Progress',color:'#14b8a6'},
     {label:'Handover Rejected',value:rejected,sub:'Status: Rejected',color:'#f43f5e'},
+    {label:'Not Yet Submitted',value:notStarted,sub:'No status assigned',color:'#64748b'},
   ];
   document.getElementById('kpiRow').innerHTML=kpis.map(k=>`
     <div class="kpi">

@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { collection, doc, setDoc, updateDoc } from 'firebase/firestore'
+import { collection, doc, setDoc, updateDoc, query, where, getDocs } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../lib/firebase'
-import { addDocumentREST } from '../lib/firestoreRest'
+import { addDocumentREST, fetchCollectionREST } from '../lib/firestoreRest'
 import { CHECKLIST_ITEMS, STATUS_COLORS } from '../lib/constants'
 import { generateChecklistReport } from '../lib/pdfGenerator'
 
@@ -120,7 +120,57 @@ export default function Checklist() {
   const [syncedToFirebase, setSyncedToFirebase] = useState(false)
   const [syncStatus, setSyncStatus] = useState('idle') // 'idle'|'syncing'|'synced'|'failed'
 
+  const [dupWarning, setDupWarning] = useState(null)
+  const [dupChecking, setDupChecking] = useState(false)
+
   const set = (field) => (val) => setForm((f) => ({ ...f, [field]: val }))
+
+  useEffect(() => {
+    const name = form.doctorName.trim()
+    const clinic = form.clinicName.trim()
+    if (name.length < 3 || clinic.length < 3) { setDupWarning(null); return }
+
+    const timer = setTimeout(async () => {
+      setDupChecking(true)
+      try {
+        // 1. Check localStorage (instant)
+        const local = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
+        const localMatch = local.find(s =>
+          s.doctorName?.toLowerCase() === name.toLowerCase() &&
+          s.clinicName?.toLowerCase() === clinic.toLowerCase()
+        )
+        if (localMatch) { setDupWarning(localMatch); return }
+
+        if (!isFirebaseConfigured || !db) return
+
+        // 2. Firebase SDK query
+        try {
+          const snap = await getDocs(query(
+            collection(db, 'submissions'),
+            where('doctorName', '==', name),
+            where('clinicName', '==', clinic)
+          ))
+          if (!snap.empty) { setDupWarning({ id: snap.docs[0].id, ...snap.docs[0].data() }); return }
+        } catch { /* fall through to REST */ }
+
+        // 3. REST fallback
+        try {
+          const all = await fetchCollectionREST()
+          const match = all.find(s =>
+            s.doctorName?.toLowerCase() === name.toLowerCase() &&
+            s.clinicName?.toLowerCase() === clinic.toLowerCase()
+          )
+          if (match) { setDupWarning(match); return }
+        } catch { /* ignore */ }
+
+        setDupWarning(null)
+      } finally {
+        setDupChecking(false)
+      }
+    }, 800)
+
+    return () => clearTimeout(timer)
+  }, [form.doctorName, form.clinicName])
 
   // ── Validation ────────────────────────────────────────────────────────────────
   const doctorPhoneErr = form.doctorPhone && !/^\d{10}$/.test(form.doctorPhone)
@@ -397,6 +447,33 @@ export default function Checklist() {
             <SelectInput label="Clinic Type" required value={form.clinicType} onChange={set('clinicType')}
               options={['Multi Specialty', 'Hospital', 'Individual Practice']}
               placeholder="Select clinic type…" />
+
+            {/* Duplicate warning */}
+            {dupChecking && (
+              <div className="sm:col-span-2 flex items-center gap-2 text-xs text-slate-400">
+                <svg className="w-3.5 h-3.5 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Checking for existing submissions…
+              </div>
+            )}
+            {!dupChecking && dupWarning && (
+              <div className="sm:col-span-2 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 flex gap-3">
+                <svg className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">Duplicate detected</p>
+                  <p className="text-xs text-amber-700 mt-0.5">
+                    A submission for <span className="font-semibold">{dupWarning.doctorName}</span> at <span className="font-semibold">{dupWarning.clinicName}</span> already exists
+                    {dupWarning.trainingDate ? ` (trained ${new Date(dupWarning.trainingDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })})` : ''}.
+                    {dupWarning.bdmName ? ` Submitted by ${dupWarning.bdmName}.` : ''}
+                  </p>
+                  <p className="text-xs text-amber-600 mt-1">You can still submit if this is a new visit or re-training.</p>
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="form-label">No. of Staff</label>
