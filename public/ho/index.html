@@ -367,7 +367,8 @@ function computeData(rows){
     'Onboarding Date': r['Onboarding Date']||'',
     'Support Member': (r['Support Member']||'').trim(),
     'Status': normalizeStatus(r['Status']),
-    'Handover to CS': r['Handover to CS']||'',
+    'Dr. Doc from Sales to CS': r['Dr. Doc from Sales to CS']||'',
+    'Handover to CS': r['Dr. Handover to CS']||'',
     'Reviewed Date': r['Reviewed Date']||'',
     'Support Comment': r['Support Comment']||'',
     'Month': r['Payment Month']||'',
@@ -412,7 +413,7 @@ function showView(id,el){
 function buildKPI(){
   const d=ovMonth?ALL_RECORDS.filter(r=>r['Month']===ovMonth):ALL_RECORDS;
   const total=d.length;
-  const uploaded=d.filter(r=>r['Handover to CS']==='Yes').length;
+  const uploaded=d.filter(r=>r['Dr. Doc from Sales to CS']==='Yes').length;
   const approved=d.filter(r=>r['Status']==='Approved').length;
   const pending=d.filter(r=>r['Status']==='Pending').length;
   const rejected=d.filter(r=>r['Status']==='Rejected').length;
