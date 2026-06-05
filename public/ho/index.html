@@ -431,10 +431,6 @@ function buildKPI(){
 
   const kpis=[
     {label:'Total Onboarded Doctors',value:total,sub:ovMonth?ovMonth:'All time',color:'#8b5cf6'},
-    {label:'Handover Completed',value:approved,sub:'Status: Approved',color:'#3b82f6'},
-    {label:'Handover Pending',value:pending,sub:'Status: Pending',color:'#f59e0b'},
-    {label:'In Progress',value:inProgress,sub:'Status: In Progress',color:'#14b8a6'},
-    {label:'Handover Rejected',value:rejected,sub:'Status: Rejected',color:'#f43f5e'},
     {label:'Not Yet Submitted',value:notStarted,sub:'No status assigned',color:'#64748b'},
   ];
   document.getElementById('kpiRow').innerHTML=kpis.map(k=>`
