@@ -415,7 +415,14 @@ function showView(id,el){
 function buildKPI(){
   const d=ovMonth?ALL_RECORDS.filter(r=>r['Month']===ovMonth):ALL_RECORDS;
   const total=d.length;
-  const uploaded=d.filter(r=>r['Dr. Doc from Sales to CS']==='Yes').length;
+  const uploadedDocs=d.filter(r=>r['Dr. Doc from Sales to CS']==='Yes');
+  const uploaded=uploadedDocs.length;
+  const upApproved=uploadedDocs.filter(r=>r['Status']==='Approved').length;
+  const upPending=uploadedDocs.filter(r=>r['Status']==='Pending').length;
+  const upInProgress=uploadedDocs.filter(r=>r['Status']==='In Progress').length;
+  const upRejected=uploadedDocs.filter(r=>r['Status']==='Rejected').length;
+  const upNotStarted=uploadedDocs.filter(r=>r['Status']==='').length;
+
   const approved=d.filter(r=>r['Status']==='Approved').length;
   const pending=d.filter(r=>r['Status']==='Pending').length;
   const inProgress=d.filter(r=>r['Status']==='In Progress').length;
@@ -424,7 +431,6 @@ function buildKPI(){
 
   const kpis=[
     {label:'Total Onboarded Doctors',value:total,sub:ovMonth?ovMonth:'All time',color:'#8b5cf6'},
-    {label:'Doctors Details Uploaded in Handover Portal',value:uploaded,sub:total?((uploaded/total)*100).toFixed(1)+'% of total':'—',color:'#22c55e'},
     {label:'Handover Completed',value:approved,sub:'Status: Approved',color:'#3b82f6'},
     {label:'Handover Pending',value:pending,sub:'Status: Pending',color:'#f59e0b'},
     {label:'In Progress',value:inProgress,sub:'Status: In Progress',color:'#14b8a6'},
@@ -438,6 +444,42 @@ function buildKPI(){
       <div class="kpi-value" style="color:${k.color}">${k.value}</div>
       <div class="kpi-sub">${k.sub}</div>
     </div>`).join('');
+
+  // Uploaded card with bifurcation
+  const uploadedCard=`
+    <div class="kpi" style="grid-column:span 2;">
+      <div class="kpi-accent" style="background:#22c55e"></div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;">
+        <div>
+          <div class="kpi-label">Doctors Details Uploaded in Handover Portal</div>
+          <div class="kpi-value" style="color:#22c55e">${uploaded}</div>
+          <div class="kpi-sub">${total?((uploaded/total)*100).toFixed(1)+'% of total':'-'}</div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding-top:4px;">
+          <div style="text-align:center;background:var(--blue-dim);border-radius:8px;padding:6px 12px;">
+            <div style="font-size:18px;font-weight:700;color:var(--blue);font-family:'DM Mono',monospace">${upApproved}</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px;">Approved</div>
+          </div>
+          <div style="text-align:center;background:var(--amber-dim);border-radius:8px;padding:6px 12px;">
+            <div style="font-size:18px;font-weight:700;color:var(--amber);font-family:'DM Mono',monospace">${upPending}</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px;">Pending</div>
+          </div>
+          <div style="text-align:center;background:var(--teal-dim);border-radius:8px;padding:6px 12px;">
+            <div style="font-size:18px;font-weight:700;color:var(--teal);font-family:'DM Mono',monospace">${upInProgress}</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px;">In Progress</div>
+          </div>
+          <div style="text-align:center;background:var(--red-dim);border-radius:8px;padding:6px 12px;">
+            <div style="font-size:18px;font-weight:700;color:var(--red);font-family:'DM Mono',monospace">${upRejected}</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px;">Rejected</div>
+          </div>
+          ${upNotStarted>0?`<div style="text-align:center;background:rgba(100,116,139,.12);border-radius:8px;padding:6px 12px;">
+            <div style="font-size:18px;font-weight:700;color:#64748b;font-family:'DM Mono',monospace">${upNotStarted}</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px;">No Status</div>
+          </div>`:''}
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('kpiRow').insertAdjacentHTML('afterbegin', uploadedCard);
 }
 
 // ── Overview Charts ───────────────────────────────────────────
