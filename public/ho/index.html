@@ -314,11 +314,29 @@ function checkPwd(){
       <div class="tbl-wrap" style="max-height:420px;overflow-y:auto;">
         <table>
           <thead><tr>
-            <th>AM NAME</th><th>TOTAL</th><th>✅ DONE</th><th>⏳ PENDING+IP</th><th>🔴 ISSUE</th><th>DONE %</th>
+            <th>AM NAME</th><th>TOTAL</th><th>✅ APPROVED</th><th>⏳ PENDING+IP</th><th>🔴 REJECTED</th><th>APPROVED %</th>
           </tr></thead>
           <tbody id="amTableBody"></tbody>
         </table>
       </div>
+    </div>
+  </div>
+
+  <!-- AM Onboarding vs Upload table -->
+  <div class="card" style="margin-top:16px;">
+    <div class="card-title">📥 AM-wise Onboarding vs Handover Upload</div>
+    <div class="card-sub">Total doctors onboarded vs uploaded to handover portal per AM</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>AM NAME</th>
+          <th>TOTAL ONBOARDED</th>
+          <th>UPLOADED TO PORTAL</th>
+          <th>NOT UPLOADED</th>
+          <th>UPLOAD %</th>
+        </tr></thead>
+        <tbody id="amUploadTableBody"></tbody>
+      </table>
     </div>
   </div>
 </div>
@@ -710,6 +728,32 @@ function buildTeam(){
       <td style="color:var(--amber);font-family:'DM Mono',monospace">${t.pending}</td>
       <td style="color:var(--red);font-family:'DM Mono',monospace">${t.rejected}</td>
       <td><span style="color:${t.rate>=70?'var(--green)':t.rate>=40?'var(--amber)':'var(--red)'};font-weight:700;font-family:'DM Mono',monospace">${t.rate}%</span></td>
+    </tr>`).join('');
+
+  // AM onboarding vs upload table
+  const amUploadStats=ams.map(a=>{
+    const g=d.filter(r=>r['AM Name']===a);
+    const total=g.length;
+    const uploaded=g.filter(r=>r['Dr. Doc from Sales to CS']==='Yes').length;
+    const notUploaded=total-uploaded;
+    const pct=total?+(uploaded/total*100).toFixed(1):0;
+    return {name:a,total,uploaded,notUploaded,pct};
+  }).sort((a,b)=>b.total-a.total);
+
+  document.getElementById('amUploadTableBody').innerHTML=amUploadStats.map(t=>`
+    <tr>
+      <td style="font-weight:500">${t.name}</td>
+      <td style="font-family:'DM Mono',monospace;color:var(--purple)">${t.total}</td>
+      <td style="color:var(--green);font-family:'DM Mono',monospace">${t.uploaded}</td>
+      <td style="color:var(--amber);font-family:'DM Mono',monospace">${t.notUploaded}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;">
+            <div style="width:${t.pct}%;height:100%;background:${t.pct>=70?'var(--green)':t.pct>=40?'var(--amber)':'var(--red)'};border-radius:3px;"></div>
+          </div>
+          <span style="font-weight:700;font-family:'DM Mono',monospace;font-size:11px;color:${t.pct>=70?'var(--green)':t.pct>=40?'var(--amber)':'var(--red)'}">${t.pct}%</span>
+        </div>
+      </td>
     </tr>`).join('');
 }
 
