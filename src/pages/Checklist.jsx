@@ -39,6 +39,7 @@ const initialForm = {
 }
 
 const onlyDigits = (e) => {
+  if (e.ctrlKey || e.metaKey) return
   if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
     e.preventDefault()
   }
