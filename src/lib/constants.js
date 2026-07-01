@@ -19,6 +19,7 @@ export const CHECKLIST_ITEMS = [
   'TABRx',
   'TABRx + CVT',
   'TatvaAI',
+  'Website Setup',
 ]
 
 export const STATUS_OPTIONS = ['Yes', 'No', 'NA']
