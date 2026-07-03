@@ -2,24 +2,6 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { collection, getDocs, doc, updateDoc, query, orderBy } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../lib/firebase'
-import { fetchCollectionREST } from '../lib/firestoreRest'
-
-const STATUS_BADGE = {
-  approved:    'bg-green-100 text-green-700',
-  rejected:    'bg-red-100 text-red-700',
-  pending:     'bg-amber-100 text-amber-700',
-  in_progress: 'bg-blue-100 text-blue-700',
-}
-const STATUS_LABEL = {
-  approved: '✓ Approved',
-  rejected: '✗ Rejected',
-  pending: '⏳ Pending',
-  in_progress: '🔄 In Progress',
-}
-const formatDate = (iso) => {
-  try { return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) }
-  catch { return iso || '—' }
-}
 
 const SOP_URL = import.meta.env.VITE_SOP_URL || ''
 
@@ -33,31 +15,6 @@ export default function Home() {
   const [uploadFile, setUploadFile] = useState(null)
   const [uploadStatus, setUploadStatus] = useState('idle')
   const [uploadError, setUploadError] = useState('')
-
-  // Check Training Status
-  const [showStatus, setShowStatus] = useState(false)
-  const [statusPhone, setStatusPhone] = useState('')
-  const [statusResult, setStatusResult] = useState(null)
-  const [statusLoading, setStatusLoading] = useState(false)
-  const [statusError, setStatusError] = useState('')
-
-  const handleStatusSearch = async () => {
-    const phone = statusPhone.replace(/\D/g, '').slice(0, 10)
-    if (phone.length !== 10) { setStatusError('Please enter a valid 10-digit number'); return }
-    setStatusLoading(true)
-    setStatusResult(null)
-    setStatusError('')
-    try {
-      const all = await fetchCollectionREST()
-      const match = all.find(s => (s.doctorPhone || '').replace(/\D/g, '') === phone)
-      if (match) { setStatusResult(match) }
-      else { setStatusError('No submission found for this phone number.') }
-    } catch (e) {
-      setStatusError('Could not fetch data. Please check your connection.')
-    } finally {
-      setStatusLoading(false)
-    }
-  }
 
   const handleSOP = () => {
     if (SOP_URL) {
@@ -266,131 +223,6 @@ export default function Home() {
               <p className="text-slate-500 text-xs mt-0.5">Click Submission</p>
             </div>
           </div>
-        </div>
-
-        {/* Check Training Status */}
-        <div className="mt-6">
-          {!showStatus ? (
-            <button
-              onClick={() => setShowStatus(true)}
-              className="w-full card p-5 text-left hover:shadow-md transition-all flex items-center justify-between group"
-              style={{ borderColor: '#e9d8f5' }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = '#b87fdc'}
-              onMouseLeave={e => e.currentTarget.style.borderColor = '#e9d8f5'}
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: '#f5eefa' }}>
-                  <svg className="w-6 h-6" style={{ color: '#703b96' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="font-bold text-slate-800">Check Training Status</p>
-                  <p className="text-slate-500 text-sm">Enter doctor's phone number to see their training status</p>
-                </div>
-              </div>
-              <svg className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          ) : (
-            <div className="card p-6">
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: '#f5eefa' }}>
-                    <svg className="w-5 h-5" style={{ color: '#703b96' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  </div>
-                  <h3 className="font-bold text-slate-800">Check Training Status</h3>
-                </div>
-                <button onClick={() => { setShowStatus(false); setStatusPhone(''); setStatusResult(null); setStatusError('') }}
-                  className="text-slate-400 hover:text-slate-600 transition-colors">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              <div className="flex gap-2 mb-4">
-                <input
-                  type="tel" inputMode="numeric" maxLength={10}
-                  className="form-input flex-1"
-                  placeholder="Enter doctor's 10-digit phone number"
-                  value={statusPhone}
-                  onChange={e => { setStatusPhone(e.target.value.replace(/\D/g, '').slice(0, 10)); setStatusResult(null); setStatusError('') }}
-                  onKeyDown={e => e.key === 'Enter' && handleStatusSearch()}
-                />
-                <button
-                  onClick={handleStatusSearch}
-                  disabled={statusLoading || statusPhone.length !== 10}
-                  className="flex items-center gap-2 text-white font-semibold px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-                  style={{ background: 'linear-gradient(90deg,#432d85,#703b96)' }}>
-                  {statusLoading ? (
-                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  )}
-                  Search
-                </button>
-              </div>
-
-              {statusError && (
-                <p className="text-red-500 text-sm mb-3">{statusError}</p>
-              )}
-
-              {statusResult && (() => {
-                const st = statusResult.handoverStatus || 'pending'
-                const yesCount = statusResult.checklist ? Object.values(statusResult.checklist).filter(v => v === 'Yes').length : 0
-                const total = statusResult.checklist ? Object.keys(statusResult.checklist).length : 0
-                return (
-                  <div className="rounded-xl border border-slate-200 overflow-hidden">
-                    <div className="px-4 py-3 flex items-center justify-between" style={{ background: '#f5eefa' }}>
-                      <div>
-                        <p className="font-bold text-slate-800">{statusResult.doctorName}</p>
-                        <p className="text-xs text-slate-500">{statusResult.clinicName}{statusResult.doctorCity ? ` · ${statusResult.doctorCity}` : ''}</p>
-                      </div>
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${STATUS_BADGE[st] || STATUS_BADGE.pending}`}>
-                        {STATUS_LABEL[st] || 'Pending'}
-                      </span>
-                    </div>
-                    <div className="p-4 grid grid-cols-2 gap-3 text-sm">
-                      {[
-                        ['Training Date', statusResult.trainingDate ? formatDate(statusResult.trainingDate) : '—'],
-                        ['Onboarding Date', statusResult.onboardingDate ? formatDate(statusResult.onboardingDate) : '—'],
-                        ['BDM', statusResult.bdmName || '—'],
-                        ['Support Member', statusResult.supportMember || '—'],
-                        ['Modules Completed', `${yesCount} / ${total}`],
-                        ['Submitted On', statusResult.submittedAt ? formatDate(statusResult.submittedAt) : '—'],
-                      ].map(([k, v]) => (
-                        <div key={k}>
-                          <p className="text-xs text-slate-400 mb-0.5">{k}</p>
-                          <p className="font-semibold text-slate-700 text-sm">{v}</p>
-                        </div>
-                      ))}
-                    </div>
-                    {statusResult.supportComment && (
-                      <div className="px-4 pb-4">
-                        <div className={`rounded-lg px-3 py-2 text-sm ${
-                          st === 'approved' ? 'bg-green-50 border border-green-200' :
-                          st === 'in_progress' ? 'bg-blue-50 border border-blue-200' :
-                          'bg-red-50 border border-red-200'
-                        }`}>
-                          <p className="text-xs font-semibold text-slate-500 mb-0.5">Support Note</p>
-                          <p className="text-slate-700">{statusResult.supportComment}</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })()}
-            </div>
-          )}
         </div>
 
         {/* Upload Signed Checklist */}
