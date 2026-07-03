@@ -9,14 +9,14 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
 :root{
-  --bg:#0b0f1a; --surface:#111827; --surface2:#1a2235; --border:#1f2d45;
-  --text:#e2e8f0; --muted:#64748b;
-  --purple:#8b5cf6; --purple-dim:rgba(139,92,246,.12);
-  --green:#22c55e; --green-dim:rgba(34,197,94,.12);
-  --amber:#f59e0b; --amber-dim:rgba(245,158,11,.12);
-  --blue:#3b82f6; --blue-dim:rgba(59,130,246,.12);
-  --red:#f43f5e; --red-dim:rgba(244,63,94,.12);
-  --teal:#14b8a6; --teal-dim:rgba(20,184,166,.12);
+  --bg:#0b0f1a;--surface:#111827;--surface2:#1a2235;--border:#1f2d45;
+  --text:#e2e8f0;--muted:#64748b;
+  --purple:#8b5cf6;--pdim:rgba(139,92,246,.15);
+  --green:#22c55e;--gdim:rgba(34,197,94,.15);
+  --amber:#f59e0b;--adim:rgba(245,158,11,.15);
+  --blue:#3b82f6;--bdim:rgba(59,130,246,.15);
+  --red:#f43f5e;--rdim:rgba(244,63,94,.15);
+  --teal:#14b8a6;--tdim:rgba(20,184,166,.15);
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
@@ -24,115 +24,153 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 ::-webkit-scrollbar-track{background:var(--bg);}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
 
-/* Password Gate */
+/* ── Password ── */
 #pwd-gate{position:fixed;inset:0;z-index:10000;background:var(--bg);display:flex;align-items:center;justify-content:center;}
 .pwd-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px 48px;width:340px;text-align:center;}
 .pwd-box .icon{font-size:32px;margin-bottom:12px;}
-.pwd-box h2{font-size:17px;font-weight:700;color:var(--text);margin-bottom:6px;}
+.pwd-box h2{font-size:17px;font-weight:700;margin-bottom:6px;}
 .pwd-box .sub{font-size:12px;color:var(--muted);margin-bottom:24px;}
-.pwd-box input{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;outline:none;margin-bottom:8px;box-sizing:border-box;}
+.pwd-box input{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:8px;font-size:14px;outline:none;margin-bottom:8px;}
 .pwd-box input:focus{border-color:var(--purple);}
 .pwd-error{color:var(--red);font-size:12px;min-height:16px;margin-bottom:8px;}
-.pwd-box button{width:100%;background:var(--purple);color:#fff;border:none;padding:11px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;}
-.pwd-box button:hover{opacity:.9;}
+.pwd-box button{width:100%;background:var(--purple);color:#fff;border:none;padding:11px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;}
 
-/* Loader */
-#data-loader{position:fixed;inset:0;z-index:9999;background:var(--bg);display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;}
+/* ── Loader ── */
+#loader{position:fixed;inset:0;z-index:9999;background:var(--bg);display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;}
 @keyframes spin{to{transform:rotate(360deg);}}
 .spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--purple);border-radius:50%;animation:spin .8s linear infinite;}
-@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+@keyframes pulse-dot{0%,100%{opacity:1;}50%{opacity:.4;}}
 
-/* Topbar */
-.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:100;}
-.brand{display:flex;align-items:center;gap:12px;}
-.brand-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--purple),var(--blue));border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;}
-.brand-name{font-size:15px;font-weight:700;letter-spacing:-.3px;}
+/* ── Topbar ── */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100;}
+.brand{display:flex;align-items:center;gap:10px;}
+.brand-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--purple),var(--blue));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;}
+.brand-name{font-size:15px;font-weight:700;}
 .brand-sub{font-size:11px;color:var(--muted);}
-.live-badge{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--green);font-weight:600;letter-spacing:.5px;}
-.live-dot{width:7px;height:7px;background:var(--green);border-radius:50%;animation:pulse 1.8s infinite;}
-.last-updated{font-size:11px;color:var(--muted);}
-.topbar-right{display:flex;align-items:center;gap:16px;}
+.live{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--green);font-weight:600;}
+.live-dot{width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse-dot 1.8s infinite;}
+#last-upd{font-size:11px;color:var(--muted);}
 
-/* Nav tabs */
-.nav-tabs{background:var(--surface);border-bottom:1px solid var(--border);display:flex;gap:4px;padding:0 24px;overflow-x:auto;}
-.tab{padding:12px 20px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .2s;}
-.tab:hover{color:var(--text);}
-.tab.active{color:var(--purple);border-bottom-color:var(--purple);}
+/* ── Region filter ── */
+.region-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.region-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-right:4px;}
+.rbtn{padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--muted);transition:all .15s;font-family:'DM Sans',sans-serif;}
+.rbtn.active{background:var(--pdim);color:var(--purple);border-color:var(--purple);}
+.rbtn:hover:not(.active){border-color:var(--muted);}
 
-/* Filters bar */
-.filters{display:flex;gap:10px;padding:16px 24px;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center;}
-.filter-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;}
-select,input[type=text]{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;font-size:12px;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer;}
-select:focus,input[type=text]:focus{border-color:var(--purple);}
-.filter-badge{display:inline-flex;align-items:center;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .15s;}
-.filter-badge.active{background:var(--purple-dim);color:var(--purple);border-color:var(--purple);}
-.filter-badge:not(.active){background:var(--surface2);color:var(--muted);border-color:var(--border);}
-.filter-badge:hover:not(.active){border-color:var(--muted);}
+/* ── Main layout ── */
+.main{padding:20px 24px;max-width:1600px;margin:0 auto;}
+.section-title{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px;margin-top:4px;}
 
-/* Layout */
-.main{padding:24px;max-width:1600px;margin:0 auto;}
-.view{display:none;}.view.active{display:block;}
-
-/* KPI */
-.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:14px;margin-bottom:22px;}
-.kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;position:relative;overflow:hidden;transition:transform .2s;}
-.kpi:hover{transform:translateY(-2px);}
+/* ── KPI cards ── */
+.kpi-row{display:grid;gap:12px;margin-bottom:16px;}
+.kpi-row-3{grid-template-columns:repeat(3,1fr);}
+.kpi-row-4{grid-template-columns:repeat(4,1fr);}
+.kpi-row-7{grid-template-columns:repeat(7,1fr);}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;position:relative;overflow:hidden;cursor:pointer;transition:transform .15s,box-shadow .15s;}
+.kpi:hover{transform:translateY(-2px);box-shadow:0 4px 20px rgba(0,0,0,.4);}
 .kpi-accent{position:absolute;top:0;left:0;right:0;height:3px;border-radius:12px 12px 0 0;}
-.kpi-label{font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;}
-.kpi-value{font-size:28px;font-weight:700;font-family:'DM Mono',monospace;line-height:1;}
-.kpi-sub{font-size:11px;color:var(--muted);margin-top:6px;}
+.kpi-label{font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;}
+.kpi-value{font-size:26px;font-weight:700;font-family:'DM Mono',monospace;line-height:1;}
+.kpi-sub{font-size:11px;color:var(--muted);margin-top:5px;}
 
-/* Cards / Charts */
-.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
-.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;}
-.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px;}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;}
-.card.mb{margin-bottom:16px;}
-.card-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;}
-.card-sub{font-size:11px;color:var(--muted);margin-bottom:16px;}
-.chart-wrap{position:relative;height:240px;}
-.chart-wrap.tall{height:320px;}
+/* ── Split section ── */
+.split{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.split-panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;}
+.split-panel-title{font-size:13px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.tag{padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;}
+.tag-new{background:var(--pdim);color:var(--purple);}
+.tag-existing{background:var(--tdim);color:var(--teal);}
+.mini-kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.mini-kpi{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden;}
+.mini-kpi:hover{border-color:var(--purple);transform:translateY(-1px);}
+.mini-kpi-accent{position:absolute;top:0;left:0;right:0;height:2px;border-radius:10px 10px 0 0;}
+.mini-kpi-label{font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;}
+.mini-kpi-value{font-size:22px;font-weight:700;font-family:'DM Mono',monospace;}
+.mini-kpi-sub{font-size:10px;color:var(--muted);margin-top:3px;}
 
-/* Table */
-.tbl-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border);}
+/* ── Charts ── */
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;}
+.chart-card.full{grid-column:1/-1;}
+.card-title{font-size:13px;font-weight:600;margin-bottom:3px;}
+.card-sub{font-size:11px;color:var(--muted);margin-bottom:14px;}
+.chart-wrap{position:relative;}
+.chart-wrap.h200{height:200px;}
+.chart-wrap.h260{height:260px;}
+.chart-wrap.h300{height:300px;}
+
+/* ── Perf section ── */
+.perf-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.perf-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;cursor:pointer;transition:all .15s;}
+.perf-card:hover{transform:translateY(-2px);}
+.perf-icon{font-size:28px;margin-bottom:10px;}
+.perf-value{font-size:32px;font-weight:700;font-family:'DM Mono',monospace;margin-bottom:4px;}
+.perf-label{font-size:13px;font-weight:600;margin-bottom:4px;}
+.perf-sub{font-size:11px;color:var(--muted);}
+
+/* ── Stats row ── */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.stat-label{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+.stat-value{font-size:22px;font-weight:700;font-family:'DM Mono',monospace;}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:4px;}
+
+/* ── MoM table ── */
+.mom-table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border);margin-bottom:16px;}
 table{width:100%;border-collapse:collapse;font-size:12px;}
-thead th{background:var(--surface2);color:var(--muted);font-weight:600;padding:10px 14px;text-align:left;font-size:11px;letter-spacing:.4px;text-transform:uppercase;white-space:nowrap;border-bottom:1px solid var(--border);}
-tbody tr{border-bottom:1px solid var(--border);transition:background .15s;}
+thead th{background:var(--surface2);color:var(--muted);font-weight:600;padding:9px 14px;text-align:left;font-size:10px;letter-spacing:.4px;text-transform:uppercase;white-space:nowrap;border-bottom:1px solid var(--border);}
+tbody tr{border-bottom:1px solid var(--border);transition:background .12s;}
 tbody tr:hover{background:var(--surface2);}
 tbody tr:last-child{border-bottom:none;}
-td{padding:10px 14px;color:var(--text);white-space:nowrap;}
+td{padding:9px 14px;white-space:nowrap;}
+.num{font-family:'DM Mono',monospace;text-align:right;}
+.good{color:var(--green);}
+.bad{color:var(--red);}
+.mid{color:var(--amber);}
 
-/* Badges */
-.badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.3px;}
-.badge-active{background:var(--green-dim);color:var(--green);}
-.badge-inactive{background:var(--red-dim);color:var(--red);}
-.badge-renewal{background:var(--blue-dim);color:var(--blue);}
-.badge-pending{background:var(--amber-dim);color:var(--amber);}
-.badge-upcoming{background:var(--purple-dim);color:var(--purple);}
+/* ── Modal ── */
+#modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;display:none;align-items:center;justify-content:center;padding:20px;}
+#modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:900px;max-height:85vh;display:flex;flex-direction:column;}
+.modal-header{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-title{font-size:15px;font-weight:700;}
+.modal-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+.modal-close{background:var(--surface2);border:1px solid var(--border);color:var(--muted);width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.modal-close:hover{color:var(--text);}
+.modal-search{padding:12px 22px;border-bottom:1px solid var(--border);}
+.modal-search input{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-size:13px;outline:none;font-family:'DM Sans',sans-serif;}
+.modal-search input:focus{border-color:var(--purple);}
+.modal-body{overflow-y:auto;padding:0;}
+.modal-footer{padding:12px 22px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);}
 
-/* Search */
-.search-row{display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap;}
-.search-row input[type=text]{flex:1;min-width:200px;padding:9px 14px;}
-.search-row select{min-width:120px;}
-.result-count{font-size:12px;color:var(--muted);}
+/* ── Badge ── */
+.badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.2px;}
+.b-approved{background:var(--gdim);color:var(--green);}
+.b-rejected{background:var(--rdim);color:var(--red);}
+.b-pending{background:var(--adim);color:var(--amber);}
+.b-in_progress{background:var(--bdim);color:var(--blue);}
+.b-active{background:var(--gdim);color:var(--green);}
+.b-inactive{background:var(--rdim);color:var(--red);}
+.b-new{background:var(--pdim);color:var(--purple);}
+.b-existing{background:var(--tdim);color:var(--teal);}
 
-/* Progress bar */
-.prog-bar-wrap{background:var(--surface2);border-radius:4px;height:6px;overflow:hidden;margin-top:4px;}
-.prog-bar{height:100%;border-radius:4px;transition:width .6s ease;}
-
-/* Module grid */
-.module-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:16px;}
-.module-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;}
-.module-name{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;}
-.module-value{font-size:22px;font-weight:700;font-family:'DM Mono',monospace;color:var(--purple);}
-.module-sub{font-size:11px;color:var(--muted);margin-top:3px;}
+/* ── Progress bar ── */
+.prog{background:var(--surface2);border-radius:3px;height:5px;overflow:hidden;margin-top:3px;}
+.prog-fill{height:100%;border-radius:3px;}
 
 /* Responsive */
-@media(max-width:768px){
-  .grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}
-  .topbar{padding:0 16px;}
-  .main{padding:16px;}
-  .filters{padding:12px 16px;}
+@media(max-width:900px){
+  .split,.chart-row,.perf-row{grid-template-columns:1fr;}
+  .kpi-row-7{grid-template-columns:repeat(4,1fr);}
+  .stats-row{grid-template-columns:repeat(2,1fr);}
+  .mini-kpi-row{grid-template-columns:1fr 1fr;}
+}
+@media(max-width:600px){
+  .main{padding:14px;}
+  .kpi-row-3,.kpi-row-4{grid-template-columns:1fr 1fr;}
+  .kpi-row-7{grid-template-columns:repeat(2,1fr);}
+  .stats-row{grid-template-columns:1fr 1fr;}
 }
 </style>
 </head>
@@ -144,574 +182,525 @@ td{padding:10px 14px;color:var(--text);white-space:nowrap;}
     <div class="icon">📊</div>
     <h2>Impact Dashboard</h2>
     <div class="sub">TatvaCare · Internal Access Only</div>
-    <input type="password" id="pwd-input" placeholder="Enter password" onkeydown="if(event.key==='Enter')checkPwd()">
-    <div class="pwd-error" id="pwd-error"></div>
+    <input type="password" id="pwd-in" placeholder="Enter password" onkeydown="if(event.key==='Enter')checkPwd()">
+    <div class="pwd-error" id="pwd-err"></div>
     <button onclick="checkPwd()">Access Dashboard</button>
   </div>
 </div>
 
 <!-- Loader -->
-<div id="data-loader">
+<div id="loader">
   <div class="spinner"></div>
-  <div style="font-size:13px;color:var(--muted)">Loading data from Google Sheets…</div>
+  <div style="font-size:13px;color:var(--muted)">Loading Sheet 2 data…</div>
 </div>
 
-<!-- Main App -->
+<!-- App -->
 <div id="app" style="display:none">
 
-  <!-- Topbar -->
   <div class="topbar">
     <div class="brand">
       <div class="brand-icon">📊</div>
       <div>
         <div class="brand-name">Impact Dashboard</div>
-        <div class="brand-sub">TatvaCare · Doctor Subscription Analytics</div>
+        <div class="brand-sub">Sheet 2 · Doctor Handover & Usage Analytics</div>
       </div>
     </div>
-    <div class="topbar-right">
-      <div class="live-badge"><div class="live-dot"></div>LIVE</div>
-      <div class="last-updated" id="last-updated">—</div>
+    <div style="display:flex;align-items:center;gap:16px">
+      <div class="live"><div class="live-dot"></div>LIVE</div>
+      <div id="last-upd">—</div>
     </div>
   </div>
 
-  <!-- Nav tabs -->
-  <div class="nav-tabs">
-    <div class="tab active" onclick="switchTab('overview',this)">Overview</div>
-    <div class="tab" onclick="switchTab('bdm',this)">BDM Performance</div>
-    <div class="tab" onclick="switchTab('modules',this)">Module Usage</div>
-    <div class="tab" onclick="switchTab('doctors',this)">Doctor Table</div>
-  </div>
-
-  <!-- Filters -->
-  <div class="filters">
-    <span class="filter-label">Region:</span>
-    <span class="filter-badge active" onclick="setFilter('region','All',this)">All</span>
-    <span class="filter-badge" onclick="setFilter('region','West',this)">West</span>
-    <span class="filter-badge" onclick="setFilter('region','North',this)">North</span>
-    <span class="filter-badge" onclick="setFilter('region','South',this)">South</span>
-    <span class="filter-badge" onclick="setFilter('region','East',this)">East</span>
-    <span class="filter-badge" onclick="setFilter('region','IS',this)">IS</span>
-    <span style="width:1px;height:20px;background:var(--border);margin:0 4px;"></span>
-    <span class="filter-label">Usage:</span>
-    <span class="filter-badge active" onclick="setFilter('usage','All',this)">All</span>
-    <span class="filter-badge" onclick="setFilter('usage','Active',this)">Active</span>
-    <span class="filter-badge" onclick="setFilter('usage','InActive',this)">Inactive</span>
+  <!-- Region Filter -->
+  <div class="region-bar">
+    <span class="region-label">Region:</span>
+    <button class="rbtn active" onclick="setRegion('All',this)">All</button>
+    <button class="rbtn" onclick="setRegion('NORTH',this)">North</button>
+    <button class="rbtn" onclick="setRegion('EAST',this)">East</button>
+    <button class="rbtn" onclick="setRegion('WEST',this)">West</button>
+    <button class="rbtn" onclick="setRegion('SOUTH',this)">South</button>
+    <button class="rbtn" onclick="setRegion('IS',this)">Inside Sales</button>
   </div>
 
   <div class="main">
 
-    <!-- ── OVERVIEW TAB ── -->
-    <div id="view-overview" class="view active">
-      <div class="kpi-row" id="kpi-row"></div>
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-title">Status Distribution</div>
-          <div class="card-sub">Doctor subscription status breakdown</div>
-          <div class="chart-wrap"><canvas id="chart-status"></canvas></div>
-        </div>
-        <div class="card">
-          <div class="card-title">Region-wise Doctors</div>
-          <div class="card-sub">Active vs Inactive by region</div>
-          <div class="chart-wrap"><canvas id="chart-region"></canvas></div>
-        </div>
+    <!-- ── Row 1: Top KPI Cards ── -->
+    <div class="section-title">Overview</div>
+    <div class="kpi-row kpi-row-3" id="top-kpis"></div>
+
+    <!-- ── Row 2: Coverage / Status ── -->
+    <div class="section-title">Coverage Summary</div>
+    <div class="kpi-row kpi-row-4" id="status-kpis"></div>
+
+    <!-- ── Row 3: Overall Stats ── -->
+    <div class="section-title">Usage & Activity</div>
+    <div class="stats-row" id="usage-stats"></div>
+
+    <!-- ── Row 4: New vs Existing Split ── -->
+    <div class="section-title">New vs Existing Doctors · Active/Inactive (Approved only)</div>
+    <div class="split">
+      <div class="split-panel">
+        <div class="split-panel-title">🆕 New Doctors <span class="tag tag-new">NEW</span></div>
+        <div class="mini-kpi-row" id="new-kpis"></div>
       </div>
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-title">Revenue by Region</div>
-          <div class="card-sub">Total Revenue Excl. GST (₹)</div>
-          <div class="chart-wrap"><canvas id="chart-revenue-region"></canvas></div>
-        </div>
-        <div class="card">
-          <div class="card-title">Onboarding Trend</div>
-          <div class="card-sub">Doctors onboarded per month</div>
-          <div class="chart-wrap"><canvas id="chart-onboarding"></canvas></div>
-        </div>
+      <div class="split-panel">
+        <div class="split-panel-title">🔄 Existing Doctors <span class="tag tag-existing">EXISTING</span></div>
+        <div class="mini-kpi-row" id="existing-kpis"></div>
       </div>
     </div>
 
-    <!-- ── BDM TAB ── -->
-    <div id="view-bdm" class="view">
-      <div class="card mb">
-        <div class="card-title">BDM Performance Summary</div>
-        <div class="card-sub">Doctor count, active usage and revenue by BDM</div>
-        <div class="tbl-wrap">
-          <table id="tbl-bdm">
-            <thead><tr>
-              <th>#</th><th>BDM Name</th><th>Total Doctors</th>
-              <th>Active Usage</th><th>Inactive</th><th>Active %</th>
-              <th>Total Revenue (₹)</th><th>Avg Revenue (₹)</th>
-            </tr></thead>
-            <tbody id="tbody-bdm"></tbody>
-          </table>
-        </div>
+    <!-- ── Row 5: MoM Charts ── -->
+    <div class="section-title">Month-over-Month Usage</div>
+    <div class="chart-row">
+      <div class="chart-card">
+        <div class="card-title">Avg Active Days per Month</div>
+        <div class="card-sub">Average active days across all doctors for each month</div>
+        <div class="chart-wrap h260"><canvas id="chart-mom-days"></canvas></div>
       </div>
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-title">Doctors per BDM</div>
-          <div class="card-sub">Top BDMs by doctor count</div>
-          <div class="chart-wrap tall"><canvas id="chart-bdm-count"></canvas></div>
-        </div>
-        <div class="card">
-          <div class="card-title">Revenue per BDM (₹)</div>
-          <div class="card-sub">Top BDMs by total revenue</div>
-          <div class="chart-wrap tall"><canvas id="chart-bdm-rev"></canvas></div>
-        </div>
+      <div class="chart-card">
+        <div class="card-title">Total Rx Written per Month</div>
+        <div class="card-sub">Total prescriptions written across all doctors</div>
+        <div class="chart-wrap h260"><canvas id="chart-mom-rx"></canvas></div>
       </div>
     </div>
 
-    <!-- ── MODULES TAB ── -->
-    <div id="view-modules" class="view">
-      <div class="module-grid" id="module-grid"></div>
-      <div class="card mb">
-        <div class="card-title">Module Adoption Overview</div>
-        <div class="card-sub">Total usage count per module across all doctors</div>
-        <div class="chart-wrap tall"><canvas id="chart-modules"></canvas></div>
-      </div>
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-title">Last 30 Days Usage Distribution</div>
-          <div class="card-sub">How many doctors used the app in last 30 days</div>
-          <div class="chart-wrap"><canvas id="chart-l30"></canvas></div>
-        </div>
-        <div class="card">
-          <div class="card-title">Monthly Usage Trend (Usage Days)</div>
-          <div class="card-sub">Avg usage days per doctor per month</div>
-          <div class="chart-wrap"><canvas id="chart-monthly-trend"></canvas></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── DOCTORS TAB ── -->
-    <div id="view-doctors" class="view">
-      <div class="search-row">
-        <input type="text" id="doc-search" placeholder="Search by doctor name, city, BDM…" oninput="renderDoctorTable()">
-        <select id="doc-status-filter" onchange="renderDoctorTable()">
-          <option value="">All Status</option>
-          <option>Active</option>
-          <option>InActive</option>
-          <option>Renewal Done</option>
-          <option>Pending</option>
-          <option>Upcoming</option>
+    <!-- ── Row 6: Individual MoM Table ── -->
+    <div class="chart-card" style="margin-bottom:16px">
+      <div class="card-title">Individual Doctor MoM Usage</div>
+      <div class="card-sub">Active days & Rx per month per doctor (Approved doctors)</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <input type="text" id="mom-search" placeholder="Search doctor…" oninput="renderMoMTable()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;font-size:12px;outline:none;width:220px;font-family:'DM Sans',sans-serif">
+        <select id="mom-type" onchange="renderMoMTable()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;font-size:12px;outline:none;font-family:'DM Sans',sans-serif">
+          <option value="">All Types</option>
+          <option value="New">New</option>
+          <option value="Existing">Existing</option>
         </select>
-        <select id="doc-region-filter" onchange="renderDoctorTable()">
-          <option value="">All Regions</option>
-          <option>West</option><option>North</option><option>South</option><option>East</option><option>IS</option>
-        </select>
-        <span class="result-count" id="doc-count">—</span>
+        <span id="mom-count" style="font-size:12px;color:var(--muted);line-height:34px"></span>
       </div>
-      <div class="tbl-wrap">
+      <div class="mom-table-wrap">
         <table>
           <thead><tr>
-            <th>#</th><th>Doctor Name</th><th>City</th><th>Region</th>
-            <th>BDM</th><th>AM</th><th>Status</th><th>Usage</th>
-            <th>Plan End</th><th>Revenue (₹)</th><th>Last 30D Usage</th><th>Total Rx</th>
+            <th>#</th><th>Doctor Name</th><th>City</th><th>Type</th><th>Payment Month</th>
+            <th style="text-align:right">Apr'26 Days</th><th style="text-align:right">Apr'26 Rx</th>
+            <th style="text-align:right">May'26 Days</th><th style="text-align:right">May'26 Rx</th>
+            <th style="text-align:right">Jun'26 Days</th><th style="text-align:right">Jun'26 Rx</th>
+            <th style="text-align:right">Total Rx</th><th style="text-align:right">Appointments</th>
+            <th>Active?</th>
           </tr></thead>
-          <tbody id="tbody-doctors"></tbody>
+          <tbody id="tbody-mom"></tbody>
         </table>
       </div>
-      <div id="doc-pagination" style="display:flex;justify-content:center;gap:8px;margin-top:16px;"></div>
+      <div id="mom-pagination" style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap"></div>
+    </div>
+
+    <!-- ── Row 7: Performance ── -->
+    <div class="section-title">Performance Snapshot</div>
+    <div class="perf-row">
+      <div class="perf-card" onclick="openModal('well')" style="border-color:var(--green)">
+        <div class="perf-icon">🌟</div>
+        <div class="perf-value good" id="perf-well">—</div>
+        <div class="perf-label">Doctors Performing Well</div>
+        <div class="perf-sub">Approved + Active (≥7 days in all required months) · Click to view</div>
+      </div>
+      <div class="perf-card" onclick="openModal('attention')" style="border-color:var(--red)">
+        <div class="perf-icon">⚠️</div>
+        <div class="perf-value bad" id="perf-attention">—</div>
+        <div class="perf-label">Doctors Needing Attention</div>
+        <div class="perf-sub">Approved but Inactive · Click to view</div>
+      </div>
     </div>
 
   </div><!-- /main -->
 </div><!-- /app -->
 
+<!-- Modal -->
+<div id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-title">—</div>
+        <div class="modal-sub" id="modal-sub">—</div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-search">
+      <input type="text" id="modal-search-in" placeholder="Search doctor name or city…" oninput="renderModalTable()">
+    </div>
+    <div class="modal-body">
+      <table>
+        <thead><tr>
+          <th>#</th><th>Doctor Name</th><th>City</th><th>BDM</th><th>Type</th>
+          <th>Payment Month</th><th>Status</th><th>Uploaded</th>
+          <th style="text-align:right">Apr Days</th><th style="text-align:right">May Days</th><th style="text-align:right">Jun Days</th>
+          <th style="text-align:right">Total Rx</th><th style="text-align:right">Appts</th>
+        </tr></thead>
+        <tbody id="modal-tbody"></tbody>
+      </table>
+    </div>
+    <div class="modal-footer" id="modal-footer">—</div>
+  </div>
+</div>
+
 <script>
-const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSkhiNwt1R8yNTElrJu6YMrndP1-rw5tU71J8RoS5mbkx5i0vWs7ahGXfLYI9DMp0eE2vLEq3SlrkFk/pub?output=csv'
+// ── Constants ─────────────────────────────────────────────────────────────────
+const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSkhiNwt1R8yNTElrJu6YMrndP1-rw5tU71J8RoS5mbkx5i0vWs7ahGXfLYI9DMp0eE2vLEq3SlrkFk/pub?gid=1449462011&single=true&output=csv'
 const PASSWORD = 'Tatva2024'
-const COLORS = ['#8b5cf6','#3b82f6','#22c55e','#f59e0b','#f43f5e','#14b8a6','#f97316','#ec4899','#6366f1','#84cc16']
-const MODULES = ['Point and click','In Clinic','SMARTSYNC','SMARTSYNC WITH CVT','SNAP RX','Voice RX','Teleconsultation','TAB RX','IPD ADMISSION']
-const MONTHS_ORDER = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-const MONTH_COLS = ['Jan Usage Days','Feb Usage Days','Mar Usage Days','Apr Usage Days','May Usage Days','Jun Usage Days']
 
-let allData = [], filteredData = []
-let filters = { region: 'All', usage: 'All' }
-let charts = {}
-let docPage = 0
-const DOC_PAGE_SIZE = 50
-
-// ── Password ──────────────────────────────────────────────
-function checkPwd() {
-  const val = document.getElementById('pwd-input').value.trim()
-  if (val === PASSWORD) {
-    document.getElementById('pwd-gate').style.display = 'none'
-    loadData()
-  } else {
-    document.getElementById('pwd-error').textContent = 'Incorrect password'
-    document.getElementById('pwd-input').value = ''
-  }
+// Column indices (0-based, data rows only — 2 header rows skipped)
+const C = {
+  REGION:0, NAME:1, ZOHO:2, CITY:3, BDM:4, AM:5,
+  TYPE:6,      // New / Existing
+  MOBILE:7,
+  PAY_MONTH:8, // e.g. Apr-26
+  OB_DATE:9, TRAIN_DATE:10, SUB_DATE:11,
+  UPLOADED:12, // Dr. Doc from Sales to CS: Yes/No
+  SUPPORT:13,
+  STATUS:14,   // approved / rejected / pending / in_progress
+  REV_DATE:15, COMMENT:16, HANDOVER:17,
+  JUN_DAYS:18, JUN_RX:19,
+  MAY_DAYS:20, MAY_RX:21,
+  APR_DAYS:22, APR_RX:23,
+  TOT_DAYS:24, TOT_RX:25,
+  APT:26
 }
 
-// ── Data Loading ──────────────────────────────────────────
-function loadData() {
-  document.getElementById('data-loader').style.display = 'flex'
-  Papa.parse(CSV_URL, {
-    download: true, header: true, skipEmptyLines: true,
-    complete(res) {
-      allData = res.data
-      document.getElementById('data-loader').style.display = 'none'
-      document.getElementById('app').style.display = 'block'
-      document.getElementById('last-updated').textContent = 'Updated: ' + new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})
-      applyFilters()
+// Month columns in chronological order (oldest → newest)
+const MONTHS = [
+  { label:"Apr'26", dayCol:C.APR_DAYS, rxCol:C.APR_RX, num:4, year:2026 },
+  { label:"May'26", dayCol:C.MAY_DAYS, rxCol:C.MAY_RX, num:5, year:2026 },
+  { label:"Jun'26", dayCol:C.JUN_DAYS, rxCol:C.JUN_RX, num:6, year:2026 },
+]
+
+const COLORS=['#8b5cf6','#3b82f6','#22c55e','#f59e0b','#f43f5e','#14b8a6']
+let allRows=[], filtered=[], charts={}, currentRegion='All'
+let modalRows=[], modalKey=''
+let momPage=0; const MOM_PS=50
+
+// ── Password ──────────────────────────────────────────────────────────────────
+function checkPwd(){
+  const v=document.getElementById('pwd-in').value.trim()
+  if(v===PASSWORD){document.getElementById('pwd-gate').style.display='none';loadData()}
+  else{document.getElementById('pwd-err').textContent='Incorrect password';document.getElementById('pwd-in').value=''}
+}
+
+// ── Load Data ─────────────────────────────────────────────────────────────────
+function loadData(){
+  document.getElementById('loader').style.display='flex'
+  Papa.parse(CSV_URL,{
+    download:true, header:false, skipEmptyLines:true,
+    complete(res){
+      // Skip first 2 header rows; skip rows with no doctor name
+      allRows = res.data.slice(2).filter(r => r[C.NAME] && r[C.NAME].trim() && r[C.NAME].trim() !== 'Doctor Name')
+      document.getElementById('loader').style.display='none'
+      document.getElementById('app').style.display='block'
+      document.getElementById('last-upd').textContent='Updated: '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})
+      applyFilter()
     },
-    error() {
-      document.getElementById('data-loader').innerHTML = '<div style="color:var(--red);font-size:14px;">Failed to load data. Check your connection.</div>'
+    error(){
+      document.getElementById('loader').innerHTML='<div style="color:var(--red);font-size:14px">Failed to load data. Check connection.</div>'
     }
   })
 }
 
-// ── Filters ───────────────────────────────────────────────
-function setFilter(key, val, el) {
-  filters[key] = val
-  const group = el.parentElement.querySelectorAll('.filter-badge')
-  group.forEach(b => {
-    const bVal = b.textContent.trim()
-    const match = (bVal === val) || (val === 'All' && bVal === 'All') ||
-      (key === 'usage' && ((val === 'Active' && bVal === 'Active') || (val === 'InActive' && bVal === 'Inactive')))
-    b.classList.toggle('active', match)
-  })
-  // Re-scope active badge logic
-  group.forEach(b => b.classList.remove('active'))
+// ── Region Filter ─────────────────────────────────────────────────────────────
+function setRegion(r,el){
+  currentRegion=r
+  document.querySelectorAll('.rbtn').forEach(b=>b.classList.remove('active'))
   el.classList.add('active')
-  applyFilters()
+  applyFilter()
+}
+function applyFilter(){
+  filtered = currentRegion==='All' ? allRows : allRows.filter(r=>(r[C.REGION]||'').toUpperCase()===currentRegion)
+  render()
 }
 
-function applyFilters() {
-  filteredData = allData.filter(r => {
-    if (filters.region !== 'All' && r['Region'] !== filters.region) return false
-    if (filters.usage !== 'All' && r['Usage'] !== filters.usage) return false
-    return true
+// ── Active/Inactive Logic ─────────────────────────────────────────────────────
+function parsePayMonth(str){
+  if(!str||str==='-') return null
+  const m=str.match(/^([A-Za-z]+)-(\d+)$/)
+  if(!m) return null
+  return {mon:m[1], year:2000+parseInt(m[2])}
+}
+function monthsAfterPayment(pm){
+  if(!pm) return []
+  const MNAMES=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+  const pmIdx=MNAMES.indexOf(pm.mon)
+  return MONTHS.filter(mc=>{
+    if(mc.year>pm.year) return true
+    if(mc.year===pm.year && mc.num-1 > pmIdx) return true
+    return false
   })
-  renderAll()
+}
+function getActiveStatus(row){
+  const pm=parsePayMonth(row[C.PAY_MONTH])
+  const after=monthsAfterPayment(pm)
+  if(after.length===0) return 'upcoming' // no months to evaluate yet
+  const allMet=after.every(m=>(parseFloat(row[m.dayCol])||0)>=7)
+  return allMet ? 'active' : 'inactive'
 }
 
-// ── Render All ────────────────────────────────────────────
-function renderAll() {
-  renderKPIs()
-  renderStatusChart()
-  renderRegionChart()
-  renderRevenueRegionChart()
-  renderOnboardingChart()
-  renderBDMTable()
-  renderBDMCharts()
-  renderModules()
-  renderL30Chart()
-  renderMonthlyTrend()
-  docPage = 0
-  renderDoctorTable()
+// ── Render All ────────────────────────────────────────────────────────────────
+function render(){
+  renderTopKPIs()
+  renderStatusKPIs()
+  renderUsageStats()
+  renderSplitPanel()
+  renderMoMCharts()
+  momPage=0; renderMoMTable()
+  renderPerformance()
 }
 
-// ── KPIs ──────────────────────────────────────────────────
-function renderKPIs() {
-  const d = filteredData
-  const total = d.length
-  const active = d.filter(r => r['Usage'] === 'Active').length
-  const revenue = d.reduce((s, r) => s + (parseFloat(r['Revenue Excl GST']) || 0), 0)
-  const renewalDone = d.filter(r => r['Status'] === 'Renewal Done').length
-  const avgL30 = d.reduce((s, r) => s + (parseFloat(r['Last 30 Days Usage']) || 0), 0) / (total || 1)
-  const totalRx = d.reduce((s, r) => s + (parseFloat(r['Total no of consultation']) || 0), 0)
+// ── Top KPIs ──────────────────────────────────────────────────────────────────
+function renderTopKPIs(){
+  const total=filtered.length
+  const uploaded=filtered.filter(r=>(r[C.UPLOADED]||'').toLowerCase()==='yes').length
+  const notUploaded=filtered.filter(r=>(r[C.UPLOADED]||'').toLowerCase()==='no').length
 
-  const kpis = [
-    { label: 'Total Doctors', value: total.toLocaleString(), sub: 'In selected filter', color: 'var(--purple)' },
-    { label: 'Active Usage', value: active.toLocaleString(), sub: `${total ? Math.round(active/total*100) : 0}% of total`, color: 'var(--green)' },
-    { label: 'Total Revenue', value: '₹' + formatNum(revenue), sub: 'Excl. GST', color: 'var(--teal)' },
-    { label: 'Renewal Done', value: renewalDone.toLocaleString(), sub: `${total ? Math.round(renewalDone/total*100) : 0}% of total`, color: 'var(--blue)' },
-    { label: 'Avg L30 Usage', value: avgL30.toFixed(1) + 'd', sub: 'Avg days used in 30d', color: 'var(--amber)' },
-    { label: 'Total Consultations', value: formatNum(totalRx), sub: 'All time', color: 'var(--red)' },
+  const kpis=[
+    {label:'Total Doctors', value:total, sub:'Across selected region', color:'var(--purple)', key:'all'},
+    {label:'Uploaded (Doc Received)', value:uploaded, sub:`${total?Math.round(uploaded/total*100):0}% of total`, color:'var(--green)', key:'uploaded'},
+    {label:'Not Uploaded', value:notUploaded, sub:`${total?Math.round(notUploaded/total*100):0}% of total`, color:'var(--red)', key:'not_uploaded'},
   ]
-  document.getElementById('kpi-row').innerHTML = kpis.map(k => `
-    <div class="kpi">
+  document.getElementById('top-kpis').innerHTML=kpis.map(k=>`
+    <div class="kpi" onclick="openModal('${k.key}')">
       <div class="kpi-accent" style="background:${k.color}"></div>
       <div class="kpi-label">${k.label}</div>
       <div class="kpi-value" style="color:${k.color}">${k.value}</div>
-      <div class="kpi-sub">${k.sub}</div>
+      <div class="kpi-sub">${k.sub} · <span style="color:var(--purple);font-size:10px">click to view ↗</span></div>
     </div>`).join('')
 }
 
-// ── Status Chart ──────────────────────────────────────────
-function renderStatusChart() {
-  const counts = {}
-  filteredData.forEach(r => { const s = r['Status'] || 'Unknown'; counts[s] = (counts[s]||0)+1 })
-  const labels = Object.keys(counts), values = Object.values(counts)
-  const colorMap = { 'Active': '#22c55e', 'InActive': '#f43f5e', 'Renewal Done': '#3b82f6', 'Pending': '#f59e0b', 'Upcoming': '#8b5cf6' }
-  destroyChart('chart-status')
-  charts['chart-status'] = new Chart(document.getElementById('chart-status'), {
-    type: 'doughnut',
-    data: { labels, datasets: [{ data: values, backgroundColor: labels.map(l => colorMap[l] || '#64748b'), borderWidth: 0, hoverOffset: 6 }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#e2e8f0', boxWidth: 12, padding: 14, font: { size: 12 } } } } }
-  })
+// ── Status KPIs ───────────────────────────────────────────────────────────────
+function renderStatusKPIs(){
+  const statuses=[
+    {key:'approved',   label:'Approved',    color:'var(--green)', cls:'b-approved'},
+    {key:'rejected',   label:'Rejected',    color:'var(--red)',   cls:'b-rejected'},
+    {key:'pending',    label:'Pending',     color:'var(--amber)', cls:'b-pending'},
+    {key:'in_progress',label:'In Progress', color:'var(--blue)',  cls:'b-in_progress'},
+  ]
+  const total=filtered.length
+  document.getElementById('status-kpis').innerHTML=statuses.map(s=>{
+    const count=filtered.filter(r=>(r[C.STATUS]||'').toLowerCase()===s.key).length
+    const pct=total?Math.round(count/total*100):0
+    return`<div class="kpi" onclick="openModal('status_${s.key}')">
+      <div class="kpi-accent" style="background:${s.color}"></div>
+      <div class="kpi-label">${s.label}</div>
+      <div class="kpi-value" style="color:${s.color}">${count}</div>
+      <div class="kpi-sub">${pct}% of total</div>
+      <div class="prog"><div class="prog-fill" style="width:${pct}%;background:${s.color}"></div></div>
+    </div>`
+  }).join('')
 }
 
-// ── Region Chart ──────────────────────────────────────────
-function renderRegionChart() {
-  const regions = ['West','North','South','East','IS']
-  const activeData = regions.map(rg => filteredData.filter(r => r['Region'] === rg && r['Usage'] === 'Active').length)
-  const inactiveData = regions.map(rg => filteredData.filter(r => r['Region'] === rg && r['Usage'] === 'InActive').length)
-  destroyChart('chart-region')
-  charts['chart-region'] = new Chart(document.getElementById('chart-region'), {
-    type: 'bar',
-    data: { labels: regions, datasets: [
-      { label: 'Active', data: activeData, backgroundColor: '#22c55e', borderRadius: 4 },
-      { label: 'Inactive', data: inactiveData, backgroundColor: '#f43f5e', borderRadius: 4 }
+// ── Usage Stats ───────────────────────────────────────────────────────────────
+function renderUsageStats(){
+  const d=filtered
+  const totRx=d.reduce((s,r)=>{const v=parseFloat(r[C.TOT_RX])||parseFloat(r[C.JUN_RX]||0)+parseFloat(r[C.MAY_RX]||0)+parseFloat(r[C.APR_RX]||0);return s+v},0)
+  const totApt=d.reduce((s,r)=>s+(parseFloat(r[C.APT])||0),0)
+  const junDays=d.filter(r=>r[C.JUN_DAYS]&&r[C.JUN_DAYS]!=='-').reduce((s,r)=>s+(parseFloat(r[C.JUN_DAYS])||0),0)
+  const junCount=d.filter(r=>r[C.JUN_DAYS]&&r[C.JUN_DAYS]!=='-'&&parseFloat(r[C.JUN_DAYS])>0).length
+
+  document.getElementById('usage-stats').innerHTML=[
+    {label:'Total Rx Written', value:totRx.toLocaleString('en-IN'), sub:'All time across all doctors', color:'var(--purple)'},
+    {label:'Total Appointments', value:totApt.toLocaleString('en-IN'), sub:'Total appointments booked', color:'var(--teal)'},
+    {label:"Jun'26 Total Active Days", value:junDays.toLocaleString('en-IN'), sub:`${junCount} doctors with activity`, color:'var(--green)'},
+    {label:'Handover to CS Done', value:d.filter(r=>(r[C.HANDOVER]||'').toLowerCase()==='yes').length, sub:'Dr. Handover completed', color:'var(--blue)'},
+  ].map(s=>`<div class="stat-card">
+    <div class="stat-label">${s.label}</div>
+    <div class="stat-value" style="color:${s.color}">${s.value}</div>
+    <div class="stat-sub">${s.sub}</div>
+  </div>`).join('')
+}
+
+// ── Split Panel: New vs Existing ──────────────────────────────────────────────
+function renderSplitPanel(){
+  renderTypePanel('new', 'new-kpis')
+  renderTypePanel('existing', 'existing-kpis')
+}
+function renderTypePanel(type, containerId){
+  const typeLabel = type==='new' ? 'New' : 'Existing'
+  const rows = filtered.filter(r=>(r[C.TYPE]||'').trim().toLowerCase()===type)
+  const approved = rows.filter(r=>(r[C.STATUS]||'').toLowerCase()==='approved')
+  const activeApproved = approved.filter(r=>getActiveStatus(r)==='active')
+  const inactiveApproved = approved.filter(r=>getActiveStatus(r)==='inactive')
+
+  const color = type==='new' ? 'var(--purple)' : 'var(--teal)'
+  const kpis=[
+    {label:'Total', value:rows.length, sub:'All '+typeLabel, color, key:`type_${type}_all`},
+    {label:'Active (Approved)', value:activeApproved.length, sub:'≥7 days in all months', color:'var(--green)', key:`type_${type}_active`},
+    {label:'Inactive (Approved)', value:inactiveApproved.length, sub:'<7 days in any month', color:'var(--red)', key:`type_${type}_inactive`},
+  ]
+  document.getElementById(containerId).innerHTML=kpis.map(k=>`
+    <div class="mini-kpi" onclick="openModal('${k.key}')">
+      <div class="mini-kpi-accent" style="background:${k.color}"></div>
+      <div class="mini-kpi-label">${k.label}</div>
+      <div class="mini-kpi-value" style="color:${k.color}">${k.value}</div>
+      <div class="mini-kpi-sub">click to view ↗</div>
+    </div>`).join('')
+}
+
+// ── MoM Charts ────────────────────────────────────────────────────────────────
+function renderMoMCharts(){
+  const d=filtered
+  const avgDays=MONTHS.map(m=>{
+    const vals=d.map(r=>parseFloat(r[m.dayCol])||0).filter(v=>v>0)
+    return vals.length ? vals.reduce((s,v)=>s+v,0)/vals.length : 0
+  })
+  const totRx=MONTHS.map(m=>d.reduce((s,r)=>s+(parseFloat(r[m.rxCol])||0),0))
+
+  destroyChart('chart-mom-days')
+  charts['chart-mom-days']=new Chart(document.getElementById('chart-mom-days'),{
+    type:'bar',
+    data:{labels:MONTHS.map(m=>m.label),datasets:[
+      {label:'Avg Active Days',data:avgDays,backgroundColor:['#f59e0b','#8b5cf6','#22c55e'],borderRadius:6}
     ]},
-    options: barOpts()
+    options:{...barOpts(),plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y.toFixed(1)+' days'}}}}
+  })
+
+  destroyChart('chart-mom-rx')
+  charts['chart-mom-rx']=new Chart(document.getElementById('chart-mom-rx'),{
+    type:'bar',
+    data:{labels:MONTHS.map(m=>m.label),datasets:[
+      {label:'Total Rx',data:totRx,backgroundColor:['#f59e0b','#8b5cf6','#22c55e'],borderRadius:6}
+    ]},
+    options:{...barOpts(),plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y.toLocaleString('en-IN')+' Rx'}}}}
   })
 }
 
-// ── Revenue by Region ─────────────────────────────────────
-function renderRevenueRegionChart() {
-  const regions = ['West','North','South','East','IS']
-  const revData = regions.map(rg => filteredData.filter(r => r['Region'] === rg).reduce((s,r) => s+(parseFloat(r['Revenue Excl GST'])||0),0))
-  destroyChart('chart-revenue-region')
-  charts['chart-revenue-region'] = new Chart(document.getElementById('chart-revenue-region'), {
-    type: 'bar',
-    data: { labels: regions, datasets: [{ label: 'Revenue (₹)', data: revData, backgroundColor: COLORS.slice(0,5), borderRadius: 6 }] },
-    options: { ...barOpts(), plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => '₹' + formatNum(ctx.parsed.y) } } } }
-  })
-}
+// ── MoM Table ─────────────────────────────────────────────────────────────────
+function renderMoMTable(){
+  const q=(document.getElementById('mom-search').value||'').toLowerCase()
+  const tp=document.getElementById('mom-type').value
 
-// ── Onboarding Trend ──────────────────────────────────────
-function renderOnboardingChart() {
-  const counts = {}
-  filteredData.forEach(r => {
-    const m = r['Onboarding Month'] || ''
-    if (m && m !== '-') counts[m] = (counts[m]||0)+1
-  })
-  const sorted = Object.entries(counts).sort((a,b) => {
-    const [ma,ya] = parseMonth(a[0]), [mb,yb] = parseMonth(b[0])
-    return ya !== yb ? ya-yb : ma-mb
-  }).slice(-18)
-  destroyChart('chart-onboarding')
-  charts['chart-onboarding'] = new Chart(document.getElementById('chart-onboarding'), {
-    type: 'line',
-    data: { labels: sorted.map(x=>x[0]), datasets: [{ label: 'Doctors', data: sorted.map(x=>x[1]), borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,.1)', fill: true, tension: .4, pointRadius: 3 }] },
-    options: { ...barOpts(), plugins: { legend: { display: false } } }
-  })
-}
-
-function parseMonth(str) {
-  if (!str) return [0, 0]
-  const parts = str.split('-')
-  if (parts.length !== 2) return [0, 0]
-  const mIdx = MONTHS_ORDER.indexOf(parts[0]) + 1
-  const yr = parseInt('20' + parts[1]) || 0
-  return [mIdx, yr]
-}
-
-// ── BDM Table ─────────────────────────────────────────────
-function renderBDMTable() {
-  const map = {}
-  filteredData.forEach(r => {
-    const bdm = r['BDM Name'] || 'Unknown'
-    if (!map[bdm]) map[bdm] = { total: 0, active: 0, inactive: 0, revenue: 0 }
-    map[bdm].total++
-    if (r['Usage'] === 'Active') map[bdm].active++
-    else map[bdm].inactive++
-    map[bdm].revenue += parseFloat(r['Revenue Excl GST']) || 0
-  })
-  const rows = Object.entries(map).sort((a,b) => b[1].total - a[1].total)
-  document.getElementById('tbody-bdm').innerHTML = rows.map(([bdm, d], i) => `
-    <tr>
-      <td style="color:var(--muted)">${i+1}</td>
-      <td style="font-weight:600">${bdm}</td>
-      <td>${d.total}</td>
-      <td><span class="badge badge-active">${d.active}</span></td>
-      <td><span class="badge badge-inactive">${d.inactive}</span></td>
-      <td>
-        <div style="display:flex;align-items:center;gap:8px">
-          <span>${d.total ? Math.round(d.active/d.total*100) : 0}%</span>
-          <div class="prog-bar-wrap" style="flex:1;min-width:60px">
-            <div class="prog-bar" style="width:${d.total ? d.active/d.total*100 : 0}%;background:var(--green)"></div>
-          </div>
-        </div>
-      </td>
-      <td style="font-family:'DM Mono',monospace">₹${formatNum(d.revenue)}</td>
-      <td style="color:var(--muted);font-family:'DM Mono',monospace">₹${formatNum(d.total ? d.revenue/d.total : 0)}</td>
-    </tr>`).join('')
-}
-
-// ── BDM Charts ────────────────────────────────────────────
-function renderBDMCharts() {
-  const map = {}
-  filteredData.forEach(r => {
-    const bdm = r['BDM Name'] || 'Unknown'
-    if (!map[bdm]) map[bdm] = { total: 0, revenue: 0 }
-    map[bdm].total++
-    map[bdm].revenue += parseFloat(r['Revenue Excl GST']) || 0
-  })
-  const sorted = Object.entries(map).sort((a,b) => b[1].total - a[1].total).slice(0, 15)
-  const labels = sorted.map(x => x[0])
-
-  destroyChart('chart-bdm-count')
-  charts['chart-bdm-count'] = new Chart(document.getElementById('chart-bdm-count'), {
-    type: 'bar',
-    data: { labels, datasets: [{ label: 'Doctors', data: sorted.map(x => x[1].total), backgroundColor: '#8b5cf6', borderRadius: 4 }] },
-    options: { ...hBarOpts(), plugins: { legend: { display: false } } }
-  })
-
-  const sortedRev = Object.entries(map).sort((a,b) => b[1].revenue - a[1].revenue).slice(0, 15)
-  destroyChart('chart-bdm-rev')
-  charts['chart-bdm-rev'] = new Chart(document.getElementById('chart-bdm-rev'), {
-    type: 'bar',
-    data: { labels: sortedRev.map(x=>x[0]), datasets: [{ label: '₹', data: sortedRev.map(x=>x[1].revenue), backgroundColor: '#14b8a6', borderRadius: 4 }] },
-    options: { ...hBarOpts(), plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => '₹' + formatNum(ctx.parsed.x) } } } }
-  })
-}
-
-// ── Modules ───────────────────────────────────────────────
-function renderModules() {
-  const d = filteredData
-  const total = d.length || 1
-  const modData = MODULES.map(m => ({
-    name: m,
-    count: d.reduce((s,r) => s + (parseFloat(r[m]) || 0), 0),
-    users: d.filter(r => (parseFloat(r[m]) || 0) > 0).length
-  })).sort((a,b) => b.count - a.count)
-
-  document.getElementById('module-grid').innerHTML = modData.map(m => `
-    <div class="module-card">
-      <div class="module-name">${m.name}</div>
-      <div class="module-value">${formatNum(m.count)}</div>
-      <div class="module-sub">${m.users} doctors (${Math.round(m.users/total*100)}%)</div>
-      <div class="prog-bar-wrap" style="margin-top:8px">
-        <div class="prog-bar" style="width:${Math.round(m.users/total*100)}%;background:var(--purple)"></div>
-      </div>
-    </div>`).join('')
-
-  destroyChart('chart-modules')
-  charts['chart-modules'] = new Chart(document.getElementById('chart-modules'), {
-    type: 'bar',
-    data: {
-      labels: modData.map(m => m.name),
-      datasets: [{ label: 'Total Usage', data: modData.map(m => m.count), backgroundColor: COLORS, borderRadius: 5 }]
-    },
-    options: { ...barOpts(), plugins: { legend: { display: false } } }
-  })
-}
-
-// ── L30 Chart ─────────────────────────────────────────────
-function renderL30Chart() {
-  const buckets = { '0': 0, '1-5': 0, '6-10': 0, '11-20': 0, '21-30': 0 }
-  filteredData.forEach(r => {
-    const v = parseFloat(r['Last 30 Days Usage']) || 0
-    if (v === 0) buckets['0']++
-    else if (v <= 5) buckets['1-5']++
-    else if (v <= 10) buckets['6-10']++
-    else if (v <= 20) buckets['11-20']++
-    else buckets['21-30']++
-  })
-  destroyChart('chart-l30')
-  charts['chart-l30'] = new Chart(document.getElementById('chart-l30'), {
-    type: 'doughnut',
-    data: { labels: Object.keys(buckets), datasets: [{ data: Object.values(buckets), backgroundColor: ['#f43f5e','#f59e0b','#3b82f6','#8b5cf6','#22c55e'], borderWidth: 0 }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: '#e2e8f0', boxWidth: 12, font: { size: 12 } } } } }
-  })
-}
-
-// ── Monthly Trend ─────────────────────────────────────────
-function renderMonthlyTrend() {
-  const existing = MONTH_COLS.filter(c => filteredData.some(r => r[c] && r[c] !== '-' && r[c] !== ''))
-  const avgs = existing.map(c => {
-    const vals = filteredData.map(r => parseFloat(r[c]) || 0).filter(v => v > 0)
-    return vals.length ? vals.reduce((s,v) => s+v, 0) / vals.length : 0
-  })
-  destroyChart('chart-monthly-trend')
-  charts['chart-monthly-trend'] = new Chart(document.getElementById('chart-monthly-trend'), {
-    type: 'line',
-    data: {
-      labels: existing.map(c => c.replace(' Usage Days', '')),
-      datasets: [{ label: 'Avg Usage Days', data: avgs, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,.1)', fill: true, tension: .4, pointRadius: 4 }]
-    },
-    options: { ...barOpts(), plugins: { legend: { display: false } } }
-  })
-}
-
-// ── Doctor Table ──────────────────────────────────────────
-function renderDoctorTable() {
-  const q = (document.getElementById('doc-search').value || '').toLowerCase()
-  const sf = document.getElementById('doc-status-filter').value
-  const rf = document.getElementById('doc-region-filter').value
-
-  let rows = filteredData.filter(r => {
-    const text = [r['Doctor Name'], r['Doctor City'], r['BDM Name'], r['AM Name']].join(' ').toLowerCase()
-    if (q && !text.includes(q)) return false
-    if (sf && r['Status'] !== sf) return false
-    if (rf && r['Region'] !== rf) return false
+  const approved=filtered.filter(r=>(r[C.STATUS]||'').toLowerCase()==='approved')
+  let rows=approved.filter(r=>{
+    const text=[r[C.NAME],r[C.CITY],r[C.BDM]].join(' ').toLowerCase()
+    if(q&&!text.includes(q)) return false
+    if(tp&&(r[C.TYPE]||'').trim()!==tp) return false
     return true
-  })
+  }).sort((a,b)=>(parseFloat(b[C.JUN_DAYS])||0)-(parseFloat(a[C.JUN_DAYS])||0))
 
-  document.getElementById('doc-count').textContent = rows.length + ' doctors'
-  const totalPages = Math.ceil(rows.length / DOC_PAGE_SIZE)
-  const page = Math.min(docPage, Math.max(0, totalPages - 1))
-  const pageRows = rows.slice(page * DOC_PAGE_SIZE, (page + 1) * DOC_PAGE_SIZE)
+  document.getElementById('mom-count').textContent=rows.length+' doctors'
+  const pages=Math.ceil(rows.length/MOM_PS)
+  const page=Math.min(momPage,Math.max(0,pages-1))
+  const pageRows=rows.slice(page*MOM_PS,(page+1)*MOM_PS)
 
-  const badgeClass = s => ({ 'Active':'badge-active','InActive':'badge-inactive','Renewal Done':'badge-renewal','Pending':'badge-pending','Upcoming':'badge-upcoming' }[s] || '')
+  const fmt=v=>{const n=parseFloat(v);return(!isNaN(n)&&n>0)?n:'—'}
+  const dayClass=v=>{const n=parseFloat(v)||0;return n>=7?'good':n>0?'mid':'bad'}
 
-  document.getElementById('tbody-doctors').innerHTML = pageRows.map((r, i) => `
-    <tr>
-      <td style="color:var(--muted)">${page * DOC_PAGE_SIZE + i + 1}</td>
-      <td style="font-weight:600">${r['Doctor Name'] || '—'}</td>
-      <td>${r['Doctor City'] || '—'}</td>
-      <td>${r['Region'] || '—'}</td>
-      <td>${r['BDM Name'] || '—'}</td>
-      <td style="color:var(--muted)">${r['AM Name'] || '—'}</td>
-      <td><span class="badge ${badgeClass(r['Status'])}">${r['Status'] || '—'}</span></td>
-      <td><span class="badge ${r['Usage']==='Active'?'badge-active':'badge-inactive'}">${r['Usage'] || '—'}</span></td>
-      <td style="color:var(--muted)">${r['Plan End Month'] || '—'}</td>
-      <td style="font-family:'DM Mono',monospace">₹${formatNum(parseFloat(r['Revenue Excl GST'])||0)}</td>
-      <td style="text-align:center">${r['Last 30 Days Usage'] || '—'}</td>
-      <td style="text-align:center">${r['Total no of consultation'] || '—'}</td>
-    </tr>`).join('')
+  document.getElementById('tbody-mom').innerHTML=pageRows.map((r,i)=>{
+    const status=getActiveStatus(r)
+    const aprD=fmt(r[C.APR_DAYS]),mayD=fmt(r[C.MAY_DAYS]),junD=fmt(r[C.JUN_DAYS])
+    const totRx=(parseFloat(r[C.TOT_RX])||0)||(parseFloat(r[C.APR_RX]||0)+parseFloat(r[C.MAY_RX]||0)+parseFloat(r[C.JUN_RX]||0))
+    return`<tr>
+      <td style="color:var(--muted)">${page*MOM_PS+i+1}</td>
+      <td style="font-weight:600">${r[C.NAME]}</td>
+      <td style="color:var(--muted)">${r[C.CITY]||'—'}</td>
+      <td><span class="badge b-${(r[C.TYPE]||'').trim().toLowerCase()}">${r[C.TYPE]||'—'}</span></td>
+      <td style="color:var(--muted)">${r[C.PAY_MONTH]||'—'}</td>
+      <td class="num ${dayClass(r[C.APR_DAYS])}">${aprD}</td>
+      <td class="num">${fmt(r[C.APR_RX])}</td>
+      <td class="num ${dayClass(r[C.MAY_DAYS])}">${mayD}</td>
+      <td class="num">${fmt(r[C.MAY_RX])}</td>
+      <td class="num ${dayClass(r[C.JUN_DAYS])}">${junD}</td>
+      <td class="num">${fmt(r[C.JUN_RX])}</td>
+      <td class="num">${totRx>0?totRx.toLocaleString('en-IN'):'—'}</td>
+      <td class="num">${fmt(r[C.APT])}</td>
+      <td><span class="badge b-${status}">${status==='active'?'Active':status==='inactive'?'Inactive':'Upcoming'}</span></td>
+    </tr>`
+  }).join('')
 
   // Pagination
-  const pg = document.getElementById('doc-pagination')
-  if (totalPages <= 1) { pg.innerHTML = ''; return }
-  let html = ''
-  for (let p = 0; p < totalPages; p++) {
-    html += `<button onclick="docPage=${p};renderDoctorTable()" style="padding:5px 12px;border-radius:6px;border:1px solid ${p===page?'var(--purple)':'var(--border)'};background:${p===page?'var(--purple-dim)':'var(--surface2)'};color:${p===page?'var(--purple)':'var(--muted)'};cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif">${p+1}</button>`
-  }
-  pg.innerHTML = html
+  const pg=document.getElementById('mom-pagination')
+  if(pages<=1){pg.innerHTML='';return}
+  pg.innerHTML=Array.from({length:pages},(_,p)=>`
+    <button onclick="momPage=${p};renderMoMTable()" style="padding:4px 10px;border-radius:6px;border:1px solid ${p===page?'var(--purple)':'var(--border)'};background:${p===page?'var(--pdim)':'var(--surface2)'};color:${p===page?'var(--purple)':'var(--muted)'};cursor:pointer;font-size:11px;font-family:'DM Sans',sans-serif">${p+1}</button>`
+  ).join('')
 }
 
-// ── Helpers ───────────────────────────────────────────────
-function switchTab(id, el) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'))
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'))
-  document.getElementById('view-' + id).classList.add('active')
-  el.classList.add('active')
+// ── Performance ───────────────────────────────────────────────────────────────
+function renderPerformance(){
+  const approved=filtered.filter(r=>(r[C.STATUS]||'').toLowerCase()==='approved')
+  const well=approved.filter(r=>getActiveStatus(r)==='active').length
+  const attention=approved.filter(r=>getActiveStatus(r)==='inactive').length
+  document.getElementById('perf-well').textContent=well
+  document.getElementById('perf-attention').textContent=attention
 }
 
-function destroyChart(id) {
-  if (charts[id]) { charts[id].destroy(); delete charts[id] }
+// ── Modal ─────────────────────────────────────────────────────────────────────
+const MODAL_CONFIGS={
+  'all':          {title:'All Doctors',          sub:'Complete doctor list for selected region',    filter:r=>true},
+  'uploaded':     {title:'Uploaded Doctors',     sub:'Dr. Doc from Sales to CS = Yes',             filter:r=>(r[C.UPLOADED]||'').toLowerCase()==='yes'},
+  'not_uploaded': {title:'Not Uploaded Doctors', sub:'Dr. Doc from Sales to CS = No',              filter:r=>(r[C.UPLOADED]||'').toLowerCase()==='no'},
+  'status_approved':    {title:'Approved Doctors',    sub:'Status = Approved',    filter:r=>(r[C.STATUS]||'').toLowerCase()==='approved'},
+  'status_rejected':    {title:'Rejected Doctors',    sub:'Status = Rejected',    filter:r=>(r[C.STATUS]||'').toLowerCase()==='rejected'},
+  'status_pending':     {title:'Pending Doctors',     sub:'Status = Pending',     filter:r=>(r[C.STATUS]||'').toLowerCase()==='pending'},
+  'status_in_progress': {title:'In Progress Doctors', sub:'Status = In Progress', filter:r=>(r[C.STATUS]||'').toLowerCase()==='in_progress'},
+  'type_new_all':       {title:'All New Doctors',     sub:'User Type = New',      filter:r=>(r[C.TYPE]||'').trim()==='New'},
+  'type_existing_all':  {title:'All Existing Doctors',sub:'User Type = Existing', filter:r=>(r[C.TYPE]||'').trim()==='Existing'},
+  'type_new_active':    {title:'Active New Doctors (Approved)',    sub:'New + Approved + Active (≥7 days in all required months)', filter:r=>(r[C.TYPE]||'').trim()==='New'&&(r[C.STATUS]||'').toLowerCase()==='approved'&&getActiveStatus(r)==='active'},
+  'type_new_inactive':  {title:'Inactive New Doctors (Approved)', sub:'New + Approved + Inactive (<7 days in any required month)', filter:r=>(r[C.TYPE]||'').trim()==='New'&&(r[C.STATUS]||'').toLowerCase()==='approved'&&getActiveStatus(r)==='inactive'},
+  'type_existing_active':   {title:'Active Existing Doctors (Approved)',    sub:'Existing + Approved + Active',   filter:r=>(r[C.TYPE]||'').trim()==='Existing'&&(r[C.STATUS]||'').toLowerCase()==='approved'&&getActiveStatus(r)==='active'},
+  'type_existing_inactive': {title:'Inactive Existing Doctors (Approved)', sub:'Existing + Approved + Inactive', filter:r=>(r[C.TYPE]||'').trim()==='Existing'&&(r[C.STATUS]||'').toLowerCase()==='approved'&&getActiveStatus(r)==='inactive'},
+  'well':       {title:'Performing Well',        sub:'Approved + Active (≥7 days in all months after payment)', filter:r=>(r[C.STATUS]||'').toLowerCase()==='approved'&&getActiveStatus(r)==='active'},
+  'attention':  {title:'Needs Attention',        sub:'Approved + Inactive (less than 7 days in any required month)', filter:r=>(r[C.STATUS]||'').toLowerCase()==='approved'&&getActiveStatus(r)==='inactive'},
 }
 
-function formatNum(n) {
-  if (n >= 1e7) return (n/1e7).toFixed(2) + 'Cr'
-  if (n >= 1e5) return (n/1e5).toFixed(2) + 'L'
-  if (n >= 1000) return (n/1000).toFixed(1) + 'K'
-  return Math.round(n).toLocaleString('en-IN')
+function openModal(key){
+  const cfg=MODAL_CONFIGS[key]; if(!cfg) return
+  modalKey=key
+  modalRows=filtered.filter(cfg.filter)
+  document.getElementById('modal-title').textContent=cfg.title
+  document.getElementById('modal-sub').textContent=cfg.sub
+  document.getElementById('modal-search-in').value=''
+  document.getElementById('modal-overlay').classList.add('open')
+  renderModalTable()
+}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open')}
+
+function renderModalTable(){
+  const q=(document.getElementById('modal-search-in').value||'').toLowerCase()
+  const rows=modalRows.filter(r=>[r[C.NAME],r[C.CITY],r[C.BDM]].join(' ').toLowerCase().includes(q))
+
+  const fmt=v=>{const n=parseFloat(v);return(!isNaN(n)&&n>0)?n:'—'}
+  const dayClass=v=>{const n=parseFloat(v)||0;return n>=7?'good':n>0?'mid':'bad'}
+  const statusBadge=s=>{const k=(s||'').toLowerCase().replace(' ','_');return`<span class="badge b-${k}">${s||'—'}</span>`}
+
+  document.getElementById('modal-tbody').innerHTML=rows.map((r,i)=>{
+    const active=getActiveStatus(r)
+    const totRx=(parseFloat(r[C.TOT_RX])||0)||(parseFloat(r[C.APR_RX]||0)+parseFloat(r[C.MAY_RX]||0)+parseFloat(r[C.JUN_RX]||0))
+    return`<tr>
+      <td style="color:var(--muted)">${i+1}</td>
+      <td style="font-weight:600">${r[C.NAME]}</td>
+      <td style="color:var(--muted)">${r[C.CITY]||'—'}</td>
+      <td>${r[C.BDM]||'—'}</td>
+      <td><span class="badge b-${(r[C.TYPE]||'').trim().toLowerCase()}">${r[C.TYPE]||'—'}</span></td>
+      <td>${r[C.PAY_MONTH]||'—'}</td>
+      <td>${statusBadge(r[C.STATUS])}</td>
+      <td><span class="badge ${(r[C.UPLOADED]||'').toLowerCase()==='yes'?'b-approved':'b-rejected'}">${r[C.UPLOADED]||'—'}</span></td>
+      <td class="num ${dayClass(r[C.APR_DAYS])}">${fmt(r[C.APR_DAYS])}</td>
+      <td class="num ${dayClass(r[C.MAY_DAYS])}">${fmt(r[C.MAY_DAYS])}</td>
+      <td class="num ${dayClass(r[C.JUN_DAYS])}">${fmt(r[C.JUN_DAYS])}</td>
+      <td class="num">${totRx>0?totRx.toLocaleString('en-IN'):'—'}</td>
+      <td class="num">${fmt(r[C.APT])}</td>
+    </tr>`
+  }).join('')
+
+  document.getElementById('modal-footer').textContent=`Showing ${rows.length} of ${modalRows.length} doctors`
 }
 
-function barOpts() {
-  return {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { labels: { color: '#e2e8f0', boxWidth: 12, font: { size: 11 } } } },
-    scales: {
-      x: { grid: { color: 'rgba(31,45,69,.6)' }, ticks: { color: '#64748b', font: { size: 11 } } },
-      y: { grid: { color: 'rgba(31,45,69,.6)' }, ticks: { color: '#64748b', font: { size: 11 } } }
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function barOpts(){
+  return{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'#e2e8f0',boxWidth:12,font:{size:11}}}},
+    scales:{
+      x:{grid:{color:'rgba(31,45,69,.5)'},ticks:{color:'#64748b',font:{size:11}}},
+      y:{grid:{color:'rgba(31,45,69,.5)'},ticks:{color:'#64748b',font:{size:11}}}
     }
   }
 }
-
-function hBarOpts() {
-  return {
-    responsive: true, maintainAspectRatio: false, indexAxis: 'y',
-    plugins: { legend: { labels: { color: '#e2e8f0', boxWidth: 12, font: { size: 11 } } } },
-    scales: {
-      x: { grid: { color: 'rgba(31,45,69,.6)' }, ticks: { color: '#64748b', font: { size: 11 } } },
-      y: { grid: { color: 'rgba(31,45,69,.6)' }, ticks: { color: '#64748b', font: { size: 11 } } }
-    }
-  }
-}
+function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id]}}
 </script>
 </body>
 </html>
