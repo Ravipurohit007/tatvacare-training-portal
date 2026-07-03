@@ -289,13 +289,26 @@ function ReviewModal({ submission, onClose, onSave, onLogCall }) {
   )
 }
 
+const SUPPORT_TEAM = ['Dilshab', 'Sukhanya', 'Tasleem', 'Ghousiya']
+
 // ── Detail Modal ──────────────────────────────────────────────────────────────
-function DetailModal({ submission, onClose, onReview }) {
+function DetailModal({ submission, onClose, onReview, onReassign }) {
   if (!submission) return null
   const status = submission.handoverStatus || 'pending'
   const isApproved = status === 'approved'
   const isPending = status === 'pending'
   const isInProgress = status === 'in_progress'
+  const [editingMember, setEditingMember] = useState(false)
+  const [newMember, setNewMember] = useState(submission.supportMember || '')
+  const [saving, setSaving] = useState(false)
+
+  const handleSaveMember = async () => {
+    if (!newMember || newMember === submission.supportMember) { setEditingMember(false); return }
+    setSaving(true)
+    await onReassign(submission, newMember)
+    setSaving(false)
+    setEditingMember(false)
+  }
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -335,7 +348,6 @@ function DetailModal({ submission, onClose, onReview }) {
               ['BDM',                submission.bdmName],
               ['BDM Phone',          submission.bdmPhone || '—'],
               ['AM',                 submission.amName || '—'],
-              ['Support Member',     submission.supportMember],
               ['Device',             submission.deviceDetails || '—'],
               ['Internet Type',      submission.internetType || '—'],
             ].map(([k, v]) => (
@@ -344,6 +356,37 @@ function DetailModal({ submission, onClose, onReview }) {
                 <p className="font-medium text-slate-700 text-xs">{v}</p>
               </div>
             ))}
+            {/* Support Member — editable */}
+            <div>
+              <p className="text-xs text-slate-400 mb-0.5">Support Member</p>
+              {editingMember ? (
+                <div className="flex items-center gap-1.5">
+                  <select value={newMember} onChange={e => setNewMember(e.target.value)}
+                    className="text-xs border border-slate-200 rounded px-2 py-1 focus:outline-none focus:border-purple-400">
+                    {SUPPORT_TEAM.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                  <button onClick={handleSaveMember} disabled={saving}
+                    className="text-xs text-white font-semibold px-2 py-1 rounded disabled:opacity-50"
+                    style={{ background: 'linear-gradient(90deg,#432d85,#703b96)' }}>
+                    {saving ? '…' : 'Save'}
+                  </button>
+                  <button onClick={() => setEditingMember(false)}
+                    className="text-xs text-slate-400 hover:text-slate-600 px-1 py-1">✕</button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <p className="font-medium text-slate-700 text-xs">{submission.supportMember || '—'}</p>
+                  <button onClick={() => setEditingMember(true)}
+                    title="Reassign support member"
+                    className="text-slate-400 hover:text-purple-600 transition-colors">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Comments */}
@@ -535,6 +578,26 @@ export default function Admin() {
         if (ri !== -1) { rb[ri] = { ...rb[ri], ...original }; localStorage.setItem('tc_submissions', JSON.stringify(rb)) }
         setSubmissions((prev) => prev.map((s) => s.submittedAt === key ? { ...s, ...original } : s))
         alert('Failed to save approval — please check your connection and try again.')
+      }
+    }
+  }
+
+  const handleReassign = async (submission, newMember) => {
+    const update = { supportMember: newMember }
+    const key = submission.submittedAt
+
+    const data = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
+    const idx = data.findIndex(s => s.submittedAt === key)
+    if (idx !== -1) { data[idx] = { ...data[idx], ...update }; localStorage.setItem('tc_submissions', JSON.stringify(data)) }
+    setSubmissions(prev => prev.map(s => s.submittedAt === key ? { ...s, ...update } : s))
+    setSelected(prev => prev ? { ...prev, ...update } : prev)
+
+    if (submission.id && !submission.id.startsWith('local_')) {
+      try {
+        await updateDocumentREST(submission.id, update)
+      } catch (e) {
+        console.error('Reassign failed:', e)
+        alert('Failed to save reassignment — please check your connection and try again.')
       }
     }
   }
@@ -785,7 +848,7 @@ export default function Admin() {
         )}
       </div>
 
-      {selected && <DetailModal submission={selected} onClose={() => setSelected(null)} onReview={(s) => { setSelected(null); setReviewing(s) }} />}
+      {selected && <DetailModal submission={selected} onClose={() => setSelected(null)} onReview={(s) => { setSelected(null); setReviewing(s) }} onReassign={handleReassign} />}
       {reviewing && <ReviewModal submission={reviewing} onClose={() => setReviewing(null)} onSave={handleReview} onLogCall={handleLogCall} />}
     </div>
   )
