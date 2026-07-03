@@ -29,8 +29,10 @@ const initialForm = {
   noOfStaff: '',
   frontdeskNumber: '',
   receptionistName: '',
+  onboardingNumber: '',
   onboardingDate: '',
   trainingDate: '',
+  region: '',
   bdmName: '',
   bdmPhone: '',
   amName: '',
@@ -192,8 +194,10 @@ export default function Checklist() {
     form.doctorName.trim() &&
     form.clinicName.trim() &&
     form.clinicType &&
+    form.onboardingNumber.trim() &&
     form.onboardingDate &&
     form.trainingDate &&
+    form.region &&
     form.bdmName.trim() &&
     form.amName.trim() &&
     !doctorPhoneErr && !frontdeskErr && !bdmPhoneErr && !dateGapErr
@@ -492,6 +496,11 @@ export default function Checklist() {
             <div /> {/* spacer */}
 
             <div>
+              <label className="form-label">Onboarding Number <span className="text-red-500">*</span></label>
+              <input type="text" className="form-input" placeholder="e.g. OB-12345"
+                value={form.onboardingNumber} onChange={(e) => set('onboardingNumber')(e.target.value)} />
+            </div>
+            <div>
               <label className="form-label">Onboarding Date <span className="text-red-500">*</span></label>
               <input type="date" className="form-input"
                 value={form.onboardingDate} onChange={(e) => set('onboardingDate')(e.target.value)} />
@@ -508,6 +517,9 @@ export default function Checklist() {
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">TatvaCare Team</p>
             </div>
 
+            <SelectInput label="Region" required value={form.region} onChange={set('region')}
+              options={['North', 'East', 'West', 'South', 'Inside Sales']}
+              placeholder="Select region…" />
             <div>
               <label className="form-label">BDM Name <span className="text-red-500">*</span></label>
               <input type="text" className="form-input" placeholder="BDM who conducted the training"
@@ -621,3 +633,4 @@ export default function Checklist() {
     </div>
   )
 }
+
