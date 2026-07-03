@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { collection, getDocs, doc, updateDoc, query, orderBy } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../lib/firebase'
 
-const SOP_URL = import.meta.env.VITE_SOP_URL || ''
+const SOP_URL = '/SOP_v1.0.docx'
 
 export default function Home() {
   const navigate = useNavigate()
@@ -373,3 +373,4 @@ export default function Home() {
     </div>
   )
 }
+
