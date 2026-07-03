@@ -99,6 +99,12 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-3">
             <button
+              onClick={() => window.open('https://training-handover-app.vercel.app/impact', '_blank', 'noopener,noreferrer')}
+              className="text-purple-200 hover:text-white text-sm font-medium px-3 py-1.5 rounded-lg border border-purple-500 hover:border-white transition-colors"
+            >
+              Impact
+            </button>
+            <button
               onClick={() => window.open('https://training-handover-app.vercel.app/ho', '_blank', 'noopener,noreferrer')}
               className="text-purple-200 hover:text-white text-sm font-medium px-3 py-1.5 rounded-lg border border-purple-500 hover:border-white transition-colors"
             >
