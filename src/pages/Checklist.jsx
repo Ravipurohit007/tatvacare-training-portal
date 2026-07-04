@@ -30,6 +30,8 @@ const initialForm = {
   frontdeskNumber: '',
   receptionistName: '',
   onboardingNumber: '',
+  pocName: '',
+  pocNumber: '',
   onboardingDate: '',
   trainingDate: '',
   region: '',
@@ -180,6 +182,8 @@ export default function Checklist() {
     ? 'Must be exactly 10 digits' : ''
   const frontdeskErr = form.frontdeskNumber && !/^\d{10}$/.test(form.frontdeskNumber)
     ? 'Must be exactly 10 digits' : ''
+  const pocNumberErr = form.pocNumber && !/^\d{10}$/.test(form.pocNumber)
+    ? 'Must be exactly 10 digits' : ''
   const bdmPhoneErr = form.bdmPhone && !/^\d{10}$/.test(form.bdmPhone)
     ? 'Must be exactly 10 digits' : ''
 
@@ -195,12 +199,14 @@ export default function Checklist() {
     form.clinicName.trim() &&
     form.clinicType &&
     form.onboardingNumber.trim() &&
+    form.pocName.trim() &&
+    form.pocNumber && /^\d{10}$/.test(form.pocNumber) &&
     form.onboardingDate &&
     form.trainingDate &&
     form.region &&
     form.bdmName.trim() &&
     form.amName.trim() &&
-    !doctorPhoneErr && !frontdeskErr && !bdmPhoneErr && !dateGapErr
+    !doctorPhoneErr && !frontdeskErr && !pocNumberErr && !bdmPhoneErr && !dateGapErr
   )
 
   const yesCount = Object.values(checklist).filter((v) => v === 'Yes').length
@@ -496,7 +502,15 @@ export default function Checklist() {
             <div /> {/* spacer */}
 
             <div>
-              <label className="form-label">Onboarding Number <span className="text-red-500">*</span></label>
+              <label className="form-label">POC Name <span className="text-red-500">*</span></label>
+              <input type="text" className="form-input" placeholder="Point of Contact name"
+                value={form.pocName} onChange={(e) => set('pocName')(e.target.value)} />
+            </div>
+            <PhoneInput label="POC Mobile Number" required value={form.pocNumber}
+              onChange={set('pocNumber')} error={pocNumberErr} />
+
+            <div>
+              <label className="form-label">Onboarding Mobile Number <span className="text-red-500">*</span></label>
               <input type="text" className="form-input" placeholder="e.g. OB-12345"
                 value={form.onboardingNumber} onChange={(e) => set('onboardingNumber')(e.target.value)} />
             </div>
