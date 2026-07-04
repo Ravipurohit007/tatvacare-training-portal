@@ -29,6 +29,7 @@ function downloadPdf(docObj, filename) {
 function downloadExcel(submissions) {
   const headers = [
     '#', 'Doctor Name', 'Doctor Phone', 'City / State', 'Clinic Name', 'Clinic Type',
+    'Region', 'Onboarding Mobile Number', 'POC Name', 'POC Mobile Number',
     'Support Member', 'BDM Name', 'BDM Phone', 'AM Name',
     'Onboarding Date', 'Training Date', 'Submission Date', 'Status', 'Reviewed Date', 'Support Comment', 'Yes Modules'
   ]
@@ -43,6 +44,10 @@ function downloadExcel(submissions) {
     [s.doctorCity, s.doctorState].filter(Boolean).join(', '),
     s.clinicName || '',
     s.clinicType || '',
+    s.region || '',
+    s.onboardingNumber || '',
+    s.pocName || '',
+    s.pocNumber || '',
     s.supportMember || '',
     s.bdmName || '',
     s.bdmPhone || '',
@@ -853,3 +858,4 @@ export default function Admin() {
     </div>
   )
 }
+
