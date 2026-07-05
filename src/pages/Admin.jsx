@@ -115,7 +115,7 @@ function ReviewModal({ submission, onClose, onSave, onLogCall }) {
   const [callNote, setCallNote] = useState('')
   const [loggingCall, setLoggingCall] = useState(false)
 
-  const canSave = decision && (decision === 'approved' || comment.trim())
+  const canSave = decision && (decision === 'approved' || decision === 'duplicate' || comment.trim())
 
   const handleSave = async () => {
     if (!canSave) return
@@ -189,7 +189,7 @@ function ReviewModal({ submission, onClose, onSave, onLogCall }) {
         </div>
 
         {/* Decision cards */}
-        <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="grid grid-cols-2 gap-2 mb-4">
           <button type="button" onClick={() => setDecision('approved')}
             className={`rounded-xl border-2 p-3 text-left transition-all ${
               decision === 'approved' ? 'bg-green-50 border-green-500' : 'bg-white border-slate-200 hover:border-green-300'
@@ -237,10 +237,26 @@ function ReviewModal({ submission, onClose, onSave, onLogCall }) {
             </div>
             <p className="text-xs text-slate-400 pl-8">Incomplete training.</p>
           </button>
+
+          <button type="button" onClick={() => setDecision('duplicate')}
+            className={`rounded-xl border-2 p-3 text-left transition-all ${
+              decision === 'duplicate' ? 'bg-amber-50 border-amber-500' : 'bg-white border-slate-200 hover:border-amber-300'
+            }`}>
+            <div className="flex items-center gap-2 mb-1">
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${decision === 'duplicate' ? 'bg-amber-500' : 'bg-slate-100'}`}>
+                <svg className={`w-3.5 h-3.5 ${decision === 'duplicate' ? 'text-white' : 'text-slate-400'}`}
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <span className={`font-bold text-sm ${decision === 'duplicate' ? 'text-amber-700' : 'text-slate-600'}`}>Duplicate</span>
+            </div>
+            <p className="text-xs text-slate-400 pl-8">Same doctor submitted twice.</p>
+          </button>
         </div>
 
         {/* Comment */}
-        {decision && (
+        {decision && decision !== 'duplicate' && (
           <div className={`rounded-lg p-3 mb-4 ${
             decision === 'approved' ? 'bg-green-50 border border-green-200' :
             decision === 'in_progress' ? 'bg-blue-50 border border-blue-200' :
@@ -277,6 +293,7 @@ function ReviewModal({ submission, onClose, onSave, onLogCall }) {
             className={`flex-1 flex items-center justify-center gap-2 font-semibold py-2.5 px-5 rounded-lg transition-colors text-white disabled:opacity-50 disabled:cursor-not-allowed ${
               decision === 'rejected' ? 'bg-red-600 hover:bg-red-700' :
               decision === 'in_progress' ? 'bg-blue-600 hover:bg-blue-700' :
+              decision === 'duplicate' ? 'bg-amber-500 hover:bg-amber-600' :
               'bg-green-600 hover:bg-green-700'
             }`}
           >
