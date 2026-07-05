@@ -115,7 +115,7 @@ function ReviewModal({ submission, onClose, onSave, onLogCall }) {
   const [callNote, setCallNote] = useState('')
   const [loggingCall, setLoggingCall] = useState(false)
 
-  const canSave = decision && (decision === 'approved' || decision === 'duplicate' || comment.trim())
+  const canSave = decision && (decision === 'approved' || comment.trim())
 
   const handleSave = async () => {
     if (!canSave) return
@@ -189,7 +189,7 @@ function ReviewModal({ submission, onClose, onSave, onLogCall }) {
         </div>
 
         {/* Decision cards */}
-        <div className="grid grid-cols-2 gap-2 mb-4">
+        <div className="grid grid-cols-3 gap-2 mb-4">
           <button type="button" onClick={() => setDecision('approved')}
             className={`rounded-xl border-2 p-3 text-left transition-all ${
               decision === 'approved' ? 'bg-green-50 border-green-500' : 'bg-white border-slate-200 hover:border-green-300'
@@ -238,25 +238,10 @@ function ReviewModal({ submission, onClose, onSave, onLogCall }) {
             <p className="text-xs text-slate-400 pl-8">Incomplete training.</p>
           </button>
 
-          <button type="button" onClick={() => setDecision('duplicate')}
-            className={`rounded-xl border-2 p-3 text-left transition-all ${
-              decision === 'duplicate' ? 'bg-amber-50 border-amber-500' : 'bg-white border-slate-200 hover:border-amber-300'
-            }`}>
-            <div className="flex items-center gap-2 mb-1">
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${decision === 'duplicate' ? 'bg-amber-500' : 'bg-slate-100'}`}>
-                <svg className={`w-3.5 h-3.5 ${decision === 'duplicate' ? 'text-white' : 'text-slate-400'}`}
-                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <span className={`font-bold text-sm ${decision === 'duplicate' ? 'text-amber-700' : 'text-slate-600'}`}>Duplicate</span>
-            </div>
-            <p className="text-xs text-slate-400 pl-8">Same doctor submitted twice.</p>
-          </button>
         </div>
 
         {/* Comment */}
-        {decision && decision !== 'duplicate' && (
+        {decision && (
           <div className={`rounded-lg p-3 mb-4 ${
             decision === 'approved' ? 'bg-green-50 border border-green-200' :
             decision === 'in_progress' ? 'bg-blue-50 border border-blue-200' :
@@ -293,7 +278,6 @@ function ReviewModal({ submission, onClose, onSave, onLogCall }) {
             className={`flex-1 flex items-center justify-center gap-2 font-semibold py-2.5 px-5 rounded-lg transition-colors text-white disabled:opacity-50 disabled:cursor-not-allowed ${
               decision === 'rejected' ? 'bg-red-600 hover:bg-red-700' :
               decision === 'in_progress' ? 'bg-blue-600 hover:bg-blue-700' :
-              decision === 'duplicate' ? 'bg-amber-500 hover:bg-amber-600' :
               'bg-green-600 hover:bg-green-700'
             }`}
           >
@@ -314,15 +298,20 @@ function ReviewModal({ submission, onClose, onSave, onLogCall }) {
 const SUPPORT_TEAM = ['Dilshab', 'Sukhanya', 'Tasleem', 'Ghousiya']
 
 // ── Detail Modal ──────────────────────────────────────────────────────────────
-function DetailModal({ submission, onClose, onReview, onReassign }) {
+function DetailModal({ submission, onClose, onReview, onReassign, onMarkDuplicate, onUpdatePhone }) {
   if (!submission) return null
   const status = submission.handoverStatus || 'pending'
   const isApproved = status === 'approved'
   const isPending = status === 'pending'
   const isInProgress = status === 'in_progress'
+  const isDuplicate = status === 'duplicate'
   const [editingMember, setEditingMember] = useState(false)
   const [newMember, setNewMember] = useState(submission.supportMember || '')
   const [saving, setSaving] = useState(false)
+  const [editingPhone, setEditingPhone] = useState(false)
+  const [newPhone, setNewPhone] = useState(submission.doctorPhone || '')
+  const [savingPhone, setSavingPhone] = useState(false)
+  const [markingDup, setMarkingDup] = useState(false)
 
   const handleSaveMember = async () => {
     if (!newMember || newMember === submission.supportMember) { setEditingMember(false); return }
@@ -330,6 +319,22 @@ function DetailModal({ submission, onClose, onReview, onReassign }) {
     await onReassign(submission, newMember)
     setSaving(false)
     setEditingMember(false)
+  }
+
+  const handleSavePhone = async () => {
+    if (!newPhone || newPhone === submission.doctorPhone) { setEditingPhone(false); return }
+    setSavingPhone(true)
+    await onUpdatePhone(submission, newPhone)
+    setSavingPhone(false)
+    setEditingPhone(false)
+  }
+
+  const handleMarkDup = async () => {
+    if (!window.confirm('Mark this submission as Duplicate?')) return
+    setMarkingDup(true)
+    await onMarkDuplicate(submission)
+    setMarkingDup(false)
+    onClose()
   }
 
   return (
@@ -359,7 +364,6 @@ function DetailModal({ submission, onClose, onReview, onReassign }) {
               ['Onboarding Date',    submission.onboardingDate ? formatDate(submission.onboardingDate) : '—'],
               ['Training Date',      formatDate(submission.trainingDate)],
               ['Submitted At',       formatDateTime(submission.submittedAt)],
-              ['Doctor Phone',       submission.doctorPhone || '—'],
               ['City / State',       [submission.doctorCity, submission.doctorState].filter(Boolean).join(', ') || '—'],
               ['Complete Address',   submission.completeAddress || '—'],
               ['Clinic Name',        submission.clinicName],
@@ -378,6 +382,33 @@ function DetailModal({ submission, onClose, onReview, onReassign }) {
                 <p className="font-medium text-slate-700 text-xs">{v}</p>
               </div>
             ))}
+            {/* Doctor Phone — editable */}
+            <div>
+              <p className="text-xs text-slate-400 mb-0.5">Doctor Phone</p>
+              {editingPhone ? (
+                <div className="flex items-center gap-1.5">
+                  <input type="tel" inputMode="numeric" maxLength={10} value={newPhone}
+                    onChange={e => setNewPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    className="text-xs border border-slate-200 rounded px-2 py-1 focus:outline-none focus:border-purple-400 w-28" />
+                  <button onClick={handleSavePhone} disabled={savingPhone}
+                    className="text-xs text-white font-semibold px-2 py-1 rounded disabled:opacity-50"
+                    style={{ background: 'linear-gradient(90deg,#432d85,#703b96)' }}>
+                    {savingPhone ? '…' : 'Save'}
+                  </button>
+                  <button onClick={() => setEditingPhone(false)} className="text-xs text-slate-400 hover:text-slate-600 px-1 py-1">✕</button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <p className="font-medium text-slate-700 text-xs">{submission.doctorPhone || '—'}</p>
+                  <button onClick={() => setEditingPhone(true)} title="Edit phone number" className="text-slate-400 hover:text-purple-600 transition-colors">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+            </div>
             {/* Support Member — editable */}
             <div>
               <p className="text-xs text-slate-400 mb-0.5">Support Member</p>
@@ -477,6 +508,12 @@ function DetailModal({ submission, onClose, onReview, onReassign }) {
                 className="flex-1 text-white font-semibold text-sm py-2.5 px-5 rounded-lg transition-colors"
                 style={{ background: 'linear-gradient(90deg,#432d85,#703b96)' }}>
                 {isInProgress ? 'Update Status' : 'Review This Submission'}
+              </button>
+            )}
+            {!isDuplicate && (
+              <button onClick={handleMarkDup} disabled={markingDup}
+                className="flex-1 font-semibold text-sm py-2.5 px-5 rounded-lg transition-colors border border-amber-400 text-amber-700 bg-amber-50 hover:bg-amber-100 disabled:opacity-50">
+                {markingDup ? 'Marking…' : 'Mark as Duplicate'}
               </button>
             )}
             <button
@@ -624,6 +661,32 @@ export default function Admin() {
     }
   }
 
+  const handleMarkDuplicate = async (submission) => {
+    const update = { handoverStatus: 'duplicate' }
+    const key = submission.submittedAt
+    const data = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
+    const idx = data.findIndex(s => s.submittedAt === key)
+    if (idx !== -1) { data[idx] = { ...data[idx], ...update }; localStorage.setItem('tc_submissions', JSON.stringify(data)) }
+    setSubmissions(prev => prev.map(s => s.submittedAt === key ? { ...s, ...update } : s))
+    setSelected(prev => prev ? { ...prev, ...update } : prev)
+    if (submission.id && !submission.id.startsWith('local_')) {
+      try { await updateDocumentREST(submission.id, update) } catch (e) { console.error('Mark duplicate failed:', e) }
+    }
+  }
+
+  const handleUpdatePhone = async (submission, newPhone) => {
+    const update = { doctorPhone: newPhone }
+    const key = submission.submittedAt
+    const data = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
+    const idx = data.findIndex(s => s.submittedAt === key)
+    if (idx !== -1) { data[idx] = { ...data[idx], ...update }; localStorage.setItem('tc_submissions', JSON.stringify(data)) }
+    setSubmissions(prev => prev.map(s => s.submittedAt === key ? { ...s, ...update } : s))
+    setSelected(prev => prev ? { ...prev, ...update } : prev)
+    if (submission.id && !submission.id.startsWith('local_')) {
+      try { await updateDocumentREST(submission.id, update) } catch (e) { console.error('Phone update failed:', e) }
+    }
+  }
+
   const handleLogCall = async (submission, attempt) => {
     const existing = Array.isArray(submission.callAttempts) ? submission.callAttempts : []
     const updated = [...existing, attempt]
@@ -652,7 +715,7 @@ export default function Admin() {
 
   if (!authed) return <LoginScreen onLogin={() => setAuthed(true)} />
 
-  const counts = { all: submissions.length, pending: 0, approved: 0, rejected: 0, in_progress: 0 }
+  const counts = { all: submissions.length, pending: 0, approved: 0, rejected: 0, in_progress: 0, duplicate: 0 }
   submissions.forEach((s) => {
     const st = s.handoverStatus || 'pending'
     if (counts[st] !== undefined) counts[st]++
@@ -674,6 +737,7 @@ export default function Admin() {
     { key: 'in_progress', label: 'In Progress', color: 'text-blue-600'  },
     { key: 'approved',    label: 'Approved',    color: 'text-green-600' },
     { key: 'rejected',    label: 'Rejected',    color: 'text-red-600'   },
+    { key: 'duplicate',   label: 'Duplicate',   color: 'text-amber-600' },
   ]
 
   return (
@@ -870,7 +934,7 @@ export default function Admin() {
         )}
       </div>
 
-      {selected && <DetailModal submission={selected} onClose={() => setSelected(null)} onReview={(s) => { setSelected(null); setReviewing(s) }} onReassign={handleReassign} />}
+      {selected && <DetailModal submission={selected} onClose={() => setSelected(null)} onReview={(s) => { setSelected(null); setReviewing(s) }} onReassign={handleReassign} onMarkDuplicate={handleMarkDuplicate} onUpdatePhone={handleUpdatePhone} />}
       {reviewing && <ReviewModal submission={reviewing} onClose={() => setReviewing(null)} onSave={handleReview} onLogCall={handleLogCall} />}
     </div>
   )
