@@ -361,6 +361,7 @@ function DetailModal({ submission, onClose, onReview, onReassign, onMarkDuplicat
           {/* Details grid */}
           <div className="grid grid-cols-2 gap-3 text-sm">
             {[
+              ['Onboarding Mobile Number', submission.onboardingNumber || '—'],
               ['Onboarding Date',    submission.onboardingDate ? formatDate(submission.onboardingDate) : '—'],
               ['Training Date',      formatDate(submission.trainingDate)],
               ['Submitted At',       formatDateTime(submission.submittedAt)],
