@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth'
-import { auth, googleProvider, isFirebaseConfigured } from '../lib/firebase'
+import { signOut, onAuthStateChanged, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth'
+import { auth, isFirebaseConfigured } from '../lib/firebase'
 import { fetchCollectionREST, updateDocumentREST } from '../lib/firestoreRest'
 import { generateChecklistReport, generateCertificate } from '../lib/pdfGenerator'
 
 const isTatvacareUser = (user) => !!user && user.emailVerified && user.email?.endsWith('@tatvacare.in')
+const EMAIL_STORAGE_KEY = 'tc_admin_signin_email'
 
 const formatDate = (iso) => {
   try { return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) }
@@ -77,15 +78,7 @@ const STATUS_BADGE = {
 const STATUS_LABEL = { approved: '✓ Approved', rejected: '✗ Rejected', pending: '⏳ Pending', in_progress: '🔄 In Progress' }
 
 // ── Login ─────────────────────────────────────────────────────────────────────
-function LoginScreen({ onSignIn, error }) {
-  const [signingIn, setSigningIn] = useState(false)
-
-  const handleClick = async () => {
-    setSigningIn(true)
-    await onSignIn()
-    setSigningIn(false)
-  }
-
+function LoginCard({ title, subtitle, children }) {
   return (
     <div className="min-h-screen flex items-center justify-center p-6"
       style={{ background: 'linear-gradient(135deg, #f5eefa 0%, #f8f4ff 50%, #eef2ff 100%)' }}>
@@ -96,14 +89,57 @@ function LoginScreen({ onSignIn, error }) {
               d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
         </div>
-        <h2 className="text-xl font-bold text-slate-800 text-center mb-1">Admin Panel</h2>
-        <p className="text-slate-400 text-sm text-center mb-6">Sign in with your @tatvacare.in Google account</p>
-        <button onClick={handleClick} disabled={signingIn} className="btn-primary w-full disabled:opacity-60">
-          {signingIn ? 'Signing in…' : 'Sign in with Google'}
-        </button>
-        {error && <p className="text-red-500 text-xs mt-3 text-center">{error}</p>}
+        <h2 className="text-xl font-bold text-slate-800 text-center mb-1">{title}</h2>
+        <p className="text-slate-400 text-sm text-center mb-6">{subtitle}</p>
+        {children}
       </div>
     </div>
+  )
+}
+
+function LoginScreen({ onSendLink, onConfirmEmail, needsConfirmation, error }) {
+  const [email, setEmail] = useState('')
+  const [sending, setSending] = useState(false)
+  const [sent, setSent] = useState(false)
+
+  if (needsConfirmation) {
+    return (
+      <LoginCard title="Confirm your email" subtitle="Re-enter your @tatvacare.in email to finish signing in.">
+        <form onSubmit={async (e) => { e.preventDefault(); setSending(true); await onConfirmEmail(email.trim()); setSending(false) }} className="space-y-4">
+          <input type="email" className="form-input" placeholder="you@tatvacare.in" value={email} autoFocus
+            onChange={(e) => setEmail(e.target.value)} />
+          <button type="submit" disabled={sending || !email.trim()} className="btn-primary w-full disabled:opacity-60">
+            {sending ? 'Verifying…' : 'Confirm & sign in'}
+          </button>
+        </form>
+        {error && <p className="text-red-500 text-xs mt-3 text-center">{error}</p>}
+      </LoginCard>
+    )
+  }
+
+  if (sent) {
+    return (
+      <LoginCard title="Check your email" subtitle={`We sent a sign-in link to ${email}. Open it on this device to log in.`} />
+    )
+  }
+
+  return (
+    <LoginCard title="Admin Panel" subtitle="Sign in with your @tatvacare.in email">
+      <form onSubmit={async (e) => {
+        e.preventDefault()
+        setSending(true)
+        const ok = await onSendLink(email.trim())
+        setSending(false)
+        if (ok) setSent(true)
+      }} className="space-y-4">
+        <input type="email" className="form-input" placeholder="you@tatvacare.in" value={email} autoFocus
+          onChange={(e) => setEmail(e.target.value)} />
+        <button type="submit" disabled={sending || !email.trim()} className="btn-primary w-full disabled:opacity-60">
+          {sending ? 'Sending…' : 'Send sign-in link'}
+        </button>
+      </form>
+      {error && <p className="text-red-500 text-xs mt-3 text-center">{error}</p>}
+    </LoginCard>
   )
 }
 
@@ -547,6 +583,7 @@ export default function Admin() {
   const [authUser, setAuthUser] = useState(null)
   const [authChecking, setAuthChecking] = useState(true)
   const [authError, setAuthError] = useState('')
+  const [needsEmailConfirmation, setNeedsEmailConfirmation] = useState(false)
   const [submissions, setSubmissions] = useState([])
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -562,6 +599,34 @@ export default function Admin() {
 
   useEffect(() => {
     if (!isFirebaseConfigured || !auth) { setAuthChecking(false); return }
+
+    const completeEmailLinkSignIn = async (email) => {
+      try {
+        const result = await signInWithEmailLink(auth, email, window.location.href)
+        window.localStorage.removeItem(EMAIL_STORAGE_KEY)
+        window.history.replaceState({}, '', window.location.pathname)
+        if (!isTatvacareUser(result.user)) {
+          await signOut(auth)
+          setAuthError('Access restricted to tatvacare.in accounts.')
+        }
+        setNeedsEmailConfirmation(false)
+      } catch (e) {
+        setAuthError(e.message || 'Sign-in link is invalid or expired.')
+        setNeedsEmailConfirmation(false)
+      }
+    }
+
+    if (isSignInWithEmailLink(auth, window.location.href)) {
+      const storedEmail = window.localStorage.getItem(EMAIL_STORAGE_KEY)
+      if (storedEmail) {
+        completeEmailLinkSignIn(storedEmail)
+      } else {
+        setNeedsEmailConfirmation(true)
+        setAuthChecking(false)
+        return
+      }
+    }
+
     const unsub = onAuthStateChanged(auth, (user) => {
       if (user && !isTatvacareUser(user)) {
         signOut(auth)
@@ -575,16 +640,38 @@ export default function Admin() {
     return unsub
   }, [])
 
-  const handleSignIn = async () => {
+  const handleSendLink = async (email) => {
+    setAuthError('')
+    if (!email.endsWith('@tatvacare.in')) {
+      setAuthError('Only @tatvacare.in email addresses are allowed.')
+      return false
+    }
+    try {
+      await sendSignInLinkToEmail(auth, email, {
+        url: `${window.location.origin}/admin`,
+        handleCodeInApp: true,
+      })
+      window.localStorage.setItem(EMAIL_STORAGE_KEY, email)
+      return true
+    } catch (e) {
+      setAuthError(e.message || 'Could not send sign-in link.')
+      return false
+    }
+  }
+
+  const handleConfirmEmail = async (email) => {
     setAuthError('')
     try {
-      const result = await signInWithPopup(auth, googleProvider)
+      const result = await signInWithEmailLink(auth, email, window.location.href)
+      window.localStorage.removeItem(EMAIL_STORAGE_KEY)
+      window.history.replaceState({}, '', window.location.pathname)
       if (!isTatvacareUser(result.user)) {
         await signOut(auth)
         setAuthError('Access restricted to tatvacare.in accounts.')
       }
+      setNeedsEmailConfirmation(false)
     } catch (e) {
-      setAuthError(e.message || 'Sign-in failed.')
+      setAuthError(e.message || 'Sign-in link is invalid or expired.')
     }
   }
 
@@ -725,7 +812,14 @@ export default function Admin() {
   }
 
   if (authChecking) return null
-  if (!authUser) return <LoginScreen onSignIn={handleSignIn} error={authError} />
+  if (!authUser) return (
+    <LoginScreen
+      onSendLink={handleSendLink}
+      onConfirmEmail={handleConfirmEmail}
+      needsConfirmation={needsEmailConfirmation}
+      error={authError}
+    />
+  )
 
   const counts = { all: submissions.length, pending: 0, approved: 0, rejected: 0, in_progress: 0, duplicate: 0 }
   submissions.forEach((s) => {
