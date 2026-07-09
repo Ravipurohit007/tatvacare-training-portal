@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { signOut, onAuthStateChanged, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth'
 import { auth, isFirebaseConfigured } from '../lib/firebase'
-import { fetchCollectionREST, updateDocumentREST } from '../lib/firestoreRest'
+import { fetchCollectionREST, updateDocumentREST, redistributeBacklogREST } from '../lib/firestoreRest'
 import { generateChecklistReport, generateCertificate } from '../lib/pdfGenerator'
 
 const isTatvacareUser = (user) => !!user && user.emailVerified && user.email?.endsWith('@tatvacare.in')
@@ -677,6 +677,19 @@ export default function Admin() {
 
   const handleSignOut = () => signOut(auth)
 
+  const handleRedistributeBacklog = async () => {
+    if (!confirm('Redistribute Dilshab\'s untouched pending cases (no comment/call log yet) round-robin across the team?')) return
+    try {
+      const token = await authUser.getIdToken()
+      const result = await redistributeBacklogREST(token)
+      const summary = Object.entries(result.counts).filter(([, n]) => n > 0).map(([name, n]) => `${name}: ${n}`).join(', ')
+      alert(result.redistributed ? `Redistributed ${result.redistributed} cases — ${summary}` : 'Nothing to redistribute — no untouched pending cases assigned to Dilshab.')
+      setRefreshTick((t) => t + 1)
+    } catch (e) {
+      alert(`Redistribution failed: ${e.message}`)
+    }
+  }
+
   useEffect(() => {
     if (!authUser) return
     let cancelled = false
@@ -889,6 +902,10 @@ export default function Admin() {
                   d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
               Excel
+            </button>
+            <button onClick={handleRedistributeBacklog} title="One-time fix: redistribute Dilshab's untouched pending backlog round-robin"
+              className="bg-white/10 hover:bg-white/20 text-white rounded-lg px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 transition-colors">
+              Redistribute Backlog
             </button>
             <span className="bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full">
               {submissions.length} total

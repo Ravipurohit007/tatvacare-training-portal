@@ -53,3 +53,14 @@ export const updateDocumentREST = async (id, update, token) => {
   })
   if (!res.ok) throw new Error(`Proxy update ${res.status}`)
 }
+
+export const redistributeBacklogREST = async (token) => {
+  const res = await fetch('/api/submissions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ action: 'redistributeBacklog' }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || `Proxy ${res.status}`)
+  return json
+}

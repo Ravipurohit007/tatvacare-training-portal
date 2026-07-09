@@ -102,6 +102,46 @@ export default async function handler(req, res) {
       res.status(400).json({ error: 'Missing query — provide doctorName+clinicName, search, or an admin token' })
 
     } else if (req.method === 'POST') {
+      if (body.action === 'redistributeBacklog') {
+        let adminUser
+        try {
+          adminUser = await verifyAdmin(req)
+        } catch (e) {
+          res.status(403).json({ error: e.message })
+          return
+        }
+        if (!adminUser) { res.status(403).json({ error: 'Admin token required' }); return }
+
+        // One-time cleanup: an old round-robin bug (fixed below) kept assigning
+        // everyone to the same person. Redistribute only untouched pending cases
+        // — anything with a support comment or logged call attempt is left alone.
+        const snap = await db.collection('submissions')
+          .where('supportMember', '==', 'Dilshab')
+          .where('handoverStatus', '==', 'pending')
+          .get()
+
+        const untouched = snap.docs
+          .filter((doc) => {
+            const d = doc.data()
+            const hasComment = !!(d.supportComment && d.supportComment.trim())
+            const hasCalls = Array.isArray(d.callAttempts) && d.callAttempts.length > 0
+            return !hasComment && !hasCalls
+          })
+          .sort((a, b) => (a.data().submittedAt || '').localeCompare(b.data().submittedAt || ''))
+
+        const batch = db.batch()
+        const counts = { Dilshab: 0, Sukhanya: 0, Tasleem: 0, Ghousiya: 0 }
+        untouched.forEach((doc, i) => {
+          const member = SUPPORT_TEAM[i % SUPPORT_TEAM.length]
+          batch.update(doc.ref, { supportMember: member })
+          counts[member]++
+        })
+        if (untouched.length) await batch.commit()
+
+        res.status(200).json({ redistributed: untouched.length, counts })
+        return
+      }
+
       // Server-side round-robin: count existing docs to determine assignee
       const count = (await db.collection('submissions').count().get()).data().count
       const data = { ...body, supportMember: SUPPORT_TEAM[count % SUPPORT_TEAM.length] }
