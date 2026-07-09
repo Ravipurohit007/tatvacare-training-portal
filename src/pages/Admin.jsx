@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { collection, getDocs, getDocsFromServer, onSnapshot, addDoc, doc, updateDoc } from 'firebase/firestore'
-import { db, isFirebaseConfigured } from '../lib/firebase'
-import { fetchCollectionREST, addDocumentREST, updateDocumentREST } from '../lib/firestoreRest'
+import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth'
+import { auth, googleProvider, isFirebaseConfigured } from '../lib/firebase'
+import { fetchCollectionREST, updateDocumentREST } from '../lib/firestoreRest'
 import { generateChecklistReport, generateCertificate } from '../lib/pdfGenerator'
 
-const ADMIN_PASSWORD = (import.meta.env.VITE_ADMIN_PASSWORD || 'Tatva2024').trim()
+const isTatvacareUser = (user) => !!user && user.emailVerified && user.email?.endsWith('@tatvacare.in')
 
 const formatDate = (iso) => {
   try { return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) }
@@ -77,9 +77,15 @@ const STATUS_BADGE = {
 const STATUS_LABEL = { approved: '✓ Approved', rejected: '✗ Rejected', pending: '⏳ Pending', in_progress: '🔄 In Progress' }
 
 // ── Login ─────────────────────────────────────────────────────────────────────
-function LoginScreen({ onLogin }) {
-  const [pw, setPw] = useState('')
-  const [error, setError] = useState(false)
+function LoginScreen({ onSignIn, error }) {
+  const [signingIn, setSigningIn] = useState(false)
+
+  const handleClick = async () => {
+    setSigningIn(true)
+    await onSignIn()
+    setSigningIn(false)
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center p-6"
       style={{ background: 'linear-gradient(135deg, #f5eefa 0%, #f8f4ff 50%, #eef2ff 100%)' }}>
@@ -91,16 +97,11 @@ function LoginScreen({ onLogin }) {
           </svg>
         </div>
         <h2 className="text-xl font-bold text-slate-800 text-center mb-1">Admin Panel</h2>
-        <p className="text-slate-400 text-sm text-center mb-6">Enter password to continue</p>
-        <form onSubmit={(e) => { e.preventDefault(); pw === ADMIN_PASSWORD ? onLogin() : (setError(true), setPw('')) }} className="space-y-4">
-          <div>
-            <input type="password" className={`form-input ${error ? 'border-red-400' : ''}`}
-              placeholder="Password" value={pw} autoFocus
-              onChange={(e) => { setPw(e.target.value); setError(false) }} />
-            {error && <p className="text-red-500 text-xs mt-1">Incorrect password</p>}
-          </div>
-          <button type="submit" className="btn-primary w-full">Login</button>
-        </form>
+        <p className="text-slate-400 text-sm text-center mb-6">Sign in with your @tatvacare.in Google account</p>
+        <button onClick={handleClick} disabled={signingIn} className="btn-primary w-full disabled:opacity-60">
+          {signingIn ? 'Signing in…' : 'Sign in with Google'}
+        </button>
+        {error && <p className="text-red-500 text-xs mt-3 text-center">{error}</p>}
       </div>
     </div>
   )
@@ -543,7 +544,9 @@ function DetailModal({ submission, onClose, onReview, onReassign, onMarkDuplicat
 // ── Main Admin Page ───────────────────────────────────────────────────────────
 export default function Admin() {
   const navigate = useNavigate()
-  const [authed, setAuthed] = useState(false)
+  const [authUser, setAuthUser] = useState(null)
+  const [authChecking, setAuthChecking] = useState(true)
+  const [authError, setAuthError] = useState('')
   const [submissions, setSubmissions] = useState([])
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -558,7 +561,37 @@ export default function Admin() {
   const [syncing, setSyncing] = useState(false)
 
   useEffect(() => {
-    if (!authed) return
+    if (!isFirebaseConfigured || !auth) { setAuthChecking(false); return }
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (user && !isTatvacareUser(user)) {
+        signOut(auth)
+        setAuthError('Access restricted to tatvacare.in accounts.')
+        setAuthUser(null)
+      } else {
+        setAuthUser(user)
+      }
+      setAuthChecking(false)
+    })
+    return unsub
+  }, [])
+
+  const handleSignIn = async () => {
+    setAuthError('')
+    try {
+      const result = await signInWithPopup(auth, googleProvider)
+      if (!isTatvacareUser(result.user)) {
+        await signOut(auth)
+        setAuthError('Access restricted to tatvacare.in accounts.')
+      }
+    } catch (e) {
+      setAuthError(e.message || 'Sign-in failed.')
+    }
+  }
+
+  const handleSignOut = () => signOut(auth)
+
+  useEffect(() => {
+    if (!authUser) return
     let cancelled = false
 
     let firstLoad = true
@@ -573,39 +606,19 @@ export default function Admin() {
         firstLoad = false
       }
 
-      // Step 2: try SDK → REST API → SDK cache (in order)
-      if (!isFirebaseConfigured || !db) return
+      if (!isFirebaseConfigured) return
       if (!cancelled) setSyncing(true)
 
-      const applyDocs = (docs) => {
+      try {
+        const token = await authUser.getIdToken()
+        const docs = await fetchCollectionREST(token)
         if (cancelled) return
         const fbTimes = new Set(docs.map(d => d.submittedAt))
         const merged = [...docs, ...localData.filter(s => !fbTimes.has(s.submittedAt))]
           .sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''))
         setSubmissions(merged); setDataSource('firebase'); setFirebaseReadError('')
-      }
-
-      const race = (p) => Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error('timeout')), 10000))])
-
-      try {
-        // 1. SDK direct server
-        const snap = await race(getDocsFromServer(collection(db, 'submissions')))
-        applyDocs(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-      } catch {
-        try {
-          // 2. Vercel proxy → REST API (bypasses network block entirely)
-          const docs = await race(fetchCollectionREST())
-          applyDocs(docs)
-        } catch {
-          try {
-            // 3. SDK local cache
-            const snap = await getDocs(collection(db, 'submissions'))
-            applyDocs(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-            if (!cancelled) setFirebaseReadError('Showing cached data — server unreachable')
-          } catch (e) {
-            if (!cancelled) setFirebaseReadError(e.message || 'All sync methods failed')
-          }
-        }
+      } catch (e) {
+        if (!cancelled) setFirebaseReadError(e.message || 'Sync failed')
       } finally {
         if (!cancelled) setSyncing(false)
       }
@@ -614,7 +627,7 @@ export default function Admin() {
     loadData()
     const interval = setInterval(loadData, 900000)
     return () => { cancelled = true; clearInterval(interval) }
-  }, [authed, refreshTick])
+  }, [authUser, refreshTick])
 
   const handleReview = async (submission, decision, comment) => {
     const update = { handoverStatus: decision, supportComment: comment, reviewedAt: new Date().toISOString() }
@@ -630,7 +643,7 @@ export default function Admin() {
     // Await the REST proxy write — rollback if it fails
     if (submission.id && !submission.id.startsWith('local_')) {
       try {
-        await updateDocumentREST(submission.id, update)
+        await updateDocumentREST(submission.id, update, await authUser.getIdToken())
       } catch (e) {
         console.error('Review update failed:', e)
         const rb = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
@@ -654,7 +667,7 @@ export default function Admin() {
 
     if (submission.id && !submission.id.startsWith('local_')) {
       try {
-        await updateDocumentREST(submission.id, update)
+        await updateDocumentREST(submission.id, update, await authUser.getIdToken())
       } catch (e) {
         console.error('Reassign failed:', e)
         alert('Failed to save reassignment — please check your connection and try again.')
@@ -671,7 +684,7 @@ export default function Admin() {
     setSubmissions(prev => prev.map(s => s.submittedAt === key ? { ...s, ...update } : s))
     setSelected(prev => prev ? { ...prev, ...update } : prev)
     if (submission.id && !submission.id.startsWith('local_')) {
-      try { await updateDocumentREST(submission.id, update) } catch (e) { console.error('Mark duplicate failed:', e) }
+      try { await updateDocumentREST(submission.id, update, await authUser.getIdToken()) } catch (e) { console.error('Mark duplicate failed:', e) }
     }
   }
 
@@ -684,7 +697,7 @@ export default function Admin() {
     setSubmissions(prev => prev.map(s => s.submittedAt === key ? { ...s, ...update } : s))
     setSelected(prev => prev ? { ...prev, ...update } : prev)
     if (submission.id && !submission.id.startsWith('local_')) {
-      try { await updateDocumentREST(submission.id, update) } catch (e) { console.error('Phone update failed:', e) }
+      try { await updateDocumentREST(submission.id, update, await authUser.getIdToken()) } catch (e) { console.error('Phone update failed:', e) }
     }
   }
 
@@ -703,18 +716,16 @@ export default function Admin() {
     setReviewing((prev) => prev ? { ...prev, ...updatePayload } : prev)
     setSelected((prev) => prev ? { ...prev, ...updatePayload } : prev)
 
-    // Push to Firebase — try SDK then REST
+    // Push to Firebase
     if (submission.id && !submission.id.startsWith('local_')) {
-      if (isFirebaseConfigured && db) {
-        updateDoc(doc(db, 'submissions', submission.id), updatePayload)
-          .catch(() => updateDocumentREST(submission.id, updatePayload).catch(e => console.error('Call log failed:', e)))
-      } else {
-        updateDocumentREST(submission.id, updatePayload).catch(e => console.error('Call log failed:', e))
-      }
+      authUser.getIdToken()
+        .then(token => updateDocumentREST(submission.id, updatePayload, token))
+        .catch(e => console.error('Call log failed:', e))
     }
   }
 
-  if (!authed) return <LoginScreen onLogin={() => setAuthed(true)} />
+  if (authChecking) return null
+  if (!authUser) return <LoginScreen onSignIn={handleSignIn} error={authError} />
 
   const counts = { all: submissions.length, pending: 0, approved: 0, rejected: 0, in_progress: 0, duplicate: 0 }
   submissions.forEach((s) => {
@@ -782,6 +793,10 @@ export default function Admin() {
             <span className="bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full">
               {submissions.length} total
             </span>
+            <button onClick={handleSignOut} title={authUser.email}
+              className="text-purple-200 hover:text-white text-xs font-medium px-3 py-1.5 rounded-lg border border-purple-500 hover:border-white transition-colors">
+              Sign out
+            </button>
           </div>
         </div>
       </div>

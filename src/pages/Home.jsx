@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { collection, getDocs, doc, updateDoc, query, orderBy } from 'firebase/firestore'
-import { db, isFirebaseConfigured } from '../lib/firebase'
+import { isFirebaseConfigured } from '../lib/firebase'
+import { searchSubmissionsREST, updateDocumentREST } from '../lib/firestoreRest'
 
 const SOP_URL = '/SOP_v1.0.docx'
 
@@ -24,23 +24,31 @@ export default function Home() {
     }
   }
 
-  const handleOpenUpload = async () => {
+  const handleOpenUpload = () => {
     setShowUpload(true)
-    setLoadingSearch(true)
     setSearchQuery('')
+    setSubmissions([])
     setSelected(null)
     setUploadFile(null)
     setUploadStatus('idle')
-    if (isFirebaseConfigured && db) {
+  }
+
+  useEffect(() => {
+    if (!showUpload || !isFirebaseConfigured || searchQuery.trim().length < 2) { setSubmissions([]); return }
+    let cancelled = false
+    setLoadingSearch(true)
+    const timer = setTimeout(async () => {
       try {
-        const snap = await getDocs(query(collection(db, 'submissions'), orderBy('submittedAt', 'desc')))
-        setSubmissions(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+        const results = await searchSubmissionsREST(searchQuery.trim())
+        if (!cancelled) setSubmissions(results)
       } catch (e) {
         console.error(e)
+      } finally {
+        if (!cancelled) setLoadingSearch(false)
       }
-    }
-    setLoadingSearch(false)
-  }
+    }, 400)
+    return () => { cancelled = true; clearTimeout(timer) }
+  }, [showUpload, searchQuery])
 
   const handleClose = () => {
     setShowUpload(false)
@@ -66,7 +74,7 @@ export default function Home() {
         reader.onerror = reject
         reader.readAsDataURL(uploadFile)
       })
-      await updateDoc(doc(db, 'submissions', selected.id), {
+      await updateDocumentREST(selected.id, {
         signedChecklistFile: base64,
         signedChecklistName: uploadFile.name,
         signedChecklistUploadedAt: new Date().toISOString(),
@@ -78,10 +86,6 @@ export default function Home() {
       setUploadStatus('error')
     }
   }
-
-  const filtered = submissions.filter(s =>
-    s.doctorName?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
 
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #f5eefa 0%, #f8f4ff 50%, #eef2ff 100%)' }}>
@@ -297,10 +301,10 @@ export default function Home() {
                 <p className="text-slate-400 text-sm text-center py-4">Loading submissions…</p>
               ) : searchQuery.length > 0 && (
                 <div className="max-h-48 overflow-y-auto rounded-lg border border-slate-200 mb-4">
-                  {filtered.length === 0 ? (
+                  {submissions.length === 0 ? (
                     <p className="text-slate-400 text-sm text-center py-4">No doctor found</p>
                   ) : (
-                    filtered.slice(0, 10).map(s => (
+                    submissions.slice(0, 10).map(s => (
                       <button
                         key={s.id}
                         onClick={() => { setSelected(s); setUploadFile(null); setUploadStatus('idle'); setUploadError('') }}

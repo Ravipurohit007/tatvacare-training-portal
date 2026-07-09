@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { collection, doc, setDoc, updateDoc, query, where, getDocs } from 'firebase/firestore'
-import { db, isFirebaseConfigured } from '../lib/firebase'
-import { addDocumentREST, fetchCollectionREST } from '../lib/firestoreRest'
+import { isFirebaseConfigured } from '../lib/firebase'
+import { addDocumentREST, checkDuplicateREST, updateDocumentREST } from '../lib/firestoreRest'
 import { CHECKLIST_ITEMS, STATUS_COLORS } from '../lib/constants'
 import { generateChecklistReport } from '../lib/pdfGenerator'
 
@@ -146,25 +145,11 @@ export default function Checklist() {
         )
         if (localMatch) { setDupWarning(localMatch); return }
 
-        if (!isFirebaseConfigured || !db) return
+        if (!isFirebaseConfigured) return
 
-        // 2. Firebase SDK query
+        // 2. Scoped server-side duplicate-check (no full-collection fetch)
         try {
-          const snap = await getDocs(query(
-            collection(db, 'submissions'),
-            where('doctorName', '==', name),
-            where('clinicName', '==', clinic)
-          ))
-          if (!snap.empty) { setDupWarning({ id: snap.docs[0].id, ...snap.docs[0].data() }); return }
-        } catch { /* fall through to REST */ }
-
-        // 3. REST fallback
-        try {
-          const all = await fetchCollectionREST()
-          const match = all.find(s =>
-            s.doctorName?.toLowerCase() === name.toLowerCase() &&
-            s.clinicName?.toLowerCase() === clinic.toLowerCase()
-          )
+          const match = await checkDuplicateREST(name, clinic)
           if (match) { setDupWarning(match); return }
         } catch { /* ignore */ }
 
@@ -284,7 +269,7 @@ export default function Checklist() {
         reader.readAsDataURL(signedFile)
       })
       await Promise.race([
-        updateDoc(doc(db, 'submissions', submissionId), {
+        updateDocumentREST(submissionId, {
           signedChecklistFile: base64,
           signedChecklistName: signedFile.name,
           signedChecklistUploadedAt: new Date().toISOString(),
