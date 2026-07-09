@@ -3,13 +3,13 @@
 // client access entirely; this function is the only trusted path).
 //
 // Access model:
-//   GET   - with a verified @tatvacare.in Google ID token -> full collection
-//           - with ?doctorName=&clinicName=              -> single duplicate-check match
-//           - with ?search=                              -> name-substring matches (capped)
-//           - otherwise                                  -> 400 (no anonymous full dump)
+//   GET   - with a verified @tatvacare.in token on ADMIN_ALLOWED_EMAILS -> full collection
+//           - with ?doctorName=&clinicName=                            -> single duplicate-check match
+//           - with ?search=                                            -> name-substring matches (capped)
+//           - otherwise                                                -> 400 (no anonymous full dump)
 //   POST  - open (anonymous submission creation from the Checklist form)
-//   PATCH - with a verified token           -> any field
-//           - without a token               -> only the signed-checklist-file fields
+//   PATCH - with a verified allowlisted token -> any field
+//           - without a token                -> only the signed-checklist-file fields
 
 import admin from 'firebase-admin'
 
@@ -22,17 +22,32 @@ if (!admin.apps.length) {
 const db = admin.firestore()
 const SUPPORT_TEAM = ['Dilshab', 'Sukhanya', 'Tasleem', 'Ghousiya']
 const ANON_ALLOWED_FIELDS = ['signedChecklistFile', 'signedChecklistName', 'signedChecklistUploadedAt']
+const ALLOWED_ADMIN_EMAILS = (process.env.ADMIN_ALLOWED_EMAILS || '')
+  .split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
 
 const docToObj = (doc) => ({ id: doc.id, ...doc.data() })
+
+// Returns the decoded token if this is a verified @tatvacare.in account on the
+// allowlist (or the allowlist is unset — fail open on domain only, so a missing
+// env var can't lock everyone out). Returns null if there's no token at all.
+// Throws AdminAuthError if a token was presented but rejected, so callers can
+// tell "not trying to be admin" apart from "tried and isn't authorized".
+class AdminAuthError extends Error {}
 
 const verifyAdmin = async (req) => {
   const match = (req.headers.authorization || '').match(/^Bearer (.+)$/)
   if (!match) return null
+  let decoded
   try {
-    const decoded = await admin.auth().verifyIdToken(match[1])
-    if (decoded.email_verified && decoded.email?.endsWith('@tatvacare.in')) return decoded
-  } catch { /* invalid/expired token */ }
-  return null
+    decoded = await admin.auth().verifyIdToken(match[1])
+  } catch {
+    throw new AdminAuthError('Invalid or expired sign-in token')
+  }
+  const email = decoded.email?.toLowerCase()
+  const domainOk = decoded.email_verified && email?.endsWith('@tatvacare.in')
+  const allowlistOk = ALLOWED_ADMIN_EMAILS.length === 0 || ALLOWED_ADMIN_EMAILS.includes(email)
+  if (!domainOk || !allowlistOk) throw new AdminAuthError('This account is not authorized for admin access')
+  return decoded
 }
 
 export default async function handler(req, res) {
@@ -49,7 +64,14 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      if (await verifyAdmin(req)) {
+      let adminUser
+      try {
+        adminUser = await verifyAdmin(req)
+      } catch (e) {
+        res.status(403).json({ error: e.message })
+        return
+      }
+      if (adminUser) {
         const snap = await db.collection('submissions').get()
         res.status(200).json({ submissions: snap.docs.map(docToObj) })
         return
@@ -93,7 +115,14 @@ export default async function handler(req, res) {
         return
       }
 
-      if (!(await verifyAdmin(req))) {
+      let adminUser
+      try {
+        adminUser = await verifyAdmin(req)
+      } catch (e) {
+        res.status(403).json({ error: e.message })
+        return
+      }
+      if (!adminUser) {
         const disallowed = updateMask.some((f) => !ANON_ALLOWED_FIELDS.includes(f))
         if (disallowed) { res.status(403).json({ error: 'Not authorized to update these fields' }); return }
       }

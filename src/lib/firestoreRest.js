@@ -5,7 +5,12 @@
 export const fetchCollectionREST = async (token) => {
   const headers = token ? { Authorization: `Bearer ${token}` } : {}
   const res = await fetch('/api/submissions', { headers })
-  if (!res.ok) throw new Error(`Proxy ${res.status}`)
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    const err = new Error(body.error || `Proxy ${res.status}`)
+    err.status = res.status
+    throw err
+  }
   const json = await res.json()
   return json.submissions || []
 }

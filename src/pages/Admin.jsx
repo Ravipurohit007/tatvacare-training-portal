@@ -705,7 +705,13 @@ export default function Admin() {
           .sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''))
         setSubmissions(merged); setDataSource('firebase'); setFirebaseReadError('')
       } catch (e) {
-        if (!cancelled) setFirebaseReadError(e.message || 'Sync failed')
+        if (cancelled) return
+        if (e.status === 403) {
+          setAuthError(e.message || 'This account is not authorized for admin access.')
+          await signOut(auth)
+        } else {
+          setFirebaseReadError(e.message || 'Sync failed')
+        }
       } finally {
         if (!cancelled) setSyncing(false)
       }
