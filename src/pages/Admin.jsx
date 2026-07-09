@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { collection, getDocs, getDocsFromServer, onSnapshot, addDoc, doc, updateDoc } from 'firebase/firestore'
-import { db, isFirebaseConfigured } from '../lib/firebase'
-import { fetchCollectionREST, addDocumentREST, updateDocumentREST } from '../lib/firestoreRest'
+import { signOut, onAuthStateChanged, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth'
+import { auth, isFirebaseConfigured } from '../lib/firebase'
+import { fetchCollectionREST, updateDocumentREST } from '../lib/firestoreRest'
 import { generateChecklistReport, generateCertificate } from '../lib/pdfGenerator'
 
-const ADMIN_PASSWORD = (import.meta.env.VITE_ADMIN_PASSWORD || 'Tatva2024').trim()
+const isTatvacareUser = (user) => !!user && user.emailVerified && user.email?.endsWith('@tatvacare.in')
+const EMAIL_STORAGE_KEY = 'tc_admin_signin_email'
 
 const formatDate = (iso) => {
   try { return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) }
@@ -77,9 +78,7 @@ const STATUS_BADGE = {
 const STATUS_LABEL = { approved: '✓ Approved', rejected: '✗ Rejected', pending: '⏳ Pending', in_progress: '🔄 In Progress' }
 
 // ── Login ─────────────────────────────────────────────────────────────────────
-function LoginScreen({ onLogin }) {
-  const [pw, setPw] = useState('')
-  const [error, setError] = useState(false)
+function LoginCard({ title, subtitle, children }) {
   return (
     <div className="min-h-screen flex items-center justify-center p-6"
       style={{ background: 'linear-gradient(135deg, #f5eefa 0%, #f8f4ff 50%, #eef2ff 100%)' }}>
@@ -90,19 +89,57 @@ function LoginScreen({ onLogin }) {
               d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
         </div>
-        <h2 className="text-xl font-bold text-slate-800 text-center mb-1">Admin Panel</h2>
-        <p className="text-slate-400 text-sm text-center mb-6">Enter password to continue</p>
-        <form onSubmit={(e) => { e.preventDefault(); pw === ADMIN_PASSWORD ? onLogin() : (setError(true), setPw('')) }} className="space-y-4">
-          <div>
-            <input type="password" className={`form-input ${error ? 'border-red-400' : ''}`}
-              placeholder="Password" value={pw} autoFocus
-              onChange={(e) => { setPw(e.target.value); setError(false) }} />
-            {error && <p className="text-red-500 text-xs mt-1">Incorrect password</p>}
-          </div>
-          <button type="submit" className="btn-primary w-full">Login</button>
-        </form>
+        <h2 className="text-xl font-bold text-slate-800 text-center mb-1">{title}</h2>
+        <p className="text-slate-400 text-sm text-center mb-6">{subtitle}</p>
+        {children}
       </div>
     </div>
+  )
+}
+
+function LoginScreen({ onSendLink, onConfirmEmail, needsConfirmation, error }) {
+  const [email, setEmail] = useState('')
+  const [sending, setSending] = useState(false)
+  const [sent, setSent] = useState(false)
+
+  if (needsConfirmation) {
+    return (
+      <LoginCard title="Confirm your email" subtitle="Re-enter your @tatvacare.in email to finish signing in.">
+        <form onSubmit={async (e) => { e.preventDefault(); setSending(true); await onConfirmEmail(email.trim()); setSending(false) }} className="space-y-4">
+          <input type="email" className="form-input" placeholder="you@tatvacare.in" value={email} autoFocus
+            onChange={(e) => setEmail(e.target.value)} />
+          <button type="submit" disabled={sending || !email.trim()} className="btn-primary w-full disabled:opacity-60">
+            {sending ? 'Verifying…' : 'Confirm & sign in'}
+          </button>
+        </form>
+        {error && <p className="text-red-500 text-xs mt-3 text-center">{error}</p>}
+      </LoginCard>
+    )
+  }
+
+  if (sent) {
+    return (
+      <LoginCard title="Check your email" subtitle={`We sent a sign-in link to ${email}. Open it on this device to log in.`} />
+    )
+  }
+
+  return (
+    <LoginCard title="Admin Panel" subtitle="Sign in with your @tatvacare.in email">
+      <form onSubmit={async (e) => {
+        e.preventDefault()
+        setSending(true)
+        const ok = await onSendLink(email.trim())
+        setSending(false)
+        if (ok) setSent(true)
+      }} className="space-y-4">
+        <input type="email" className="form-input" placeholder="you@tatvacare.in" value={email} autoFocus
+          onChange={(e) => setEmail(e.target.value)} />
+        <button type="submit" disabled={sending || !email.trim()} className="btn-primary w-full disabled:opacity-60">
+          {sending ? 'Sending…' : 'Send sign-in link'}
+        </button>
+      </form>
+      {error && <p className="text-red-500 text-xs mt-3 text-center">{error}</p>}
+    </LoginCard>
   )
 }
 
@@ -543,7 +580,10 @@ function DetailModal({ submission, onClose, onReview, onReassign, onMarkDuplicat
 // ── Main Admin Page ───────────────────────────────────────────────────────────
 export default function Admin() {
   const navigate = useNavigate()
-  const [authed, setAuthed] = useState(false)
+  const [authUser, setAuthUser] = useState(null)
+  const [authChecking, setAuthChecking] = useState(true)
+  const [authError, setAuthError] = useState('')
+  const [needsEmailConfirmation, setNeedsEmailConfirmation] = useState(false)
   const [submissions, setSubmissions] = useState([])
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -558,7 +598,87 @@ export default function Admin() {
   const [syncing, setSyncing] = useState(false)
 
   useEffect(() => {
-    if (!authed) return
+    if (!isFirebaseConfigured || !auth) { setAuthChecking(false); return }
+
+    const completeEmailLinkSignIn = async (email) => {
+      try {
+        const result = await signInWithEmailLink(auth, email, window.location.href)
+        window.localStorage.removeItem(EMAIL_STORAGE_KEY)
+        window.history.replaceState({}, '', window.location.pathname)
+        if (!isTatvacareUser(result.user)) {
+          await signOut(auth)
+          setAuthError('Access restricted to tatvacare.in accounts.')
+        }
+        setNeedsEmailConfirmation(false)
+      } catch (e) {
+        setAuthError(e.message || 'Sign-in link is invalid or expired.')
+        setNeedsEmailConfirmation(false)
+      }
+    }
+
+    if (isSignInWithEmailLink(auth, window.location.href)) {
+      const storedEmail = window.localStorage.getItem(EMAIL_STORAGE_KEY)
+      if (storedEmail) {
+        completeEmailLinkSignIn(storedEmail)
+      } else {
+        setNeedsEmailConfirmation(true)
+        setAuthChecking(false)
+        return
+      }
+    }
+
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (user && !isTatvacareUser(user)) {
+        signOut(auth)
+        setAuthError('Access restricted to tatvacare.in accounts.')
+        setAuthUser(null)
+      } else {
+        setAuthUser(user)
+      }
+      setAuthChecking(false)
+    })
+    return unsub
+  }, [])
+
+  const handleSendLink = async (email) => {
+    setAuthError('')
+    if (!email.endsWith('@tatvacare.in')) {
+      setAuthError('Only @tatvacare.in email addresses are allowed.')
+      return false
+    }
+    try {
+      await sendSignInLinkToEmail(auth, email, {
+        url: `${window.location.origin}/admin`,
+        handleCodeInApp: true,
+      })
+      window.localStorage.setItem(EMAIL_STORAGE_KEY, email)
+      return true
+    } catch (e) {
+      setAuthError(e.message || 'Could not send sign-in link.')
+      return false
+    }
+  }
+
+  const handleConfirmEmail = async (email) => {
+    setAuthError('')
+    try {
+      const result = await signInWithEmailLink(auth, email, window.location.href)
+      window.localStorage.removeItem(EMAIL_STORAGE_KEY)
+      window.history.replaceState({}, '', window.location.pathname)
+      if (!isTatvacareUser(result.user)) {
+        await signOut(auth)
+        setAuthError('Access restricted to tatvacare.in accounts.')
+      }
+      setNeedsEmailConfirmation(false)
+    } catch (e) {
+      setAuthError(e.message || 'Sign-in link is invalid or expired.')
+    }
+  }
+
+  const handleSignOut = () => signOut(auth)
+
+  useEffect(() => {
+    if (!authUser) return
     let cancelled = false
 
     let firstLoad = true
@@ -573,38 +693,24 @@ export default function Admin() {
         firstLoad = false
       }
 
-      // Step 2: try SDK → REST API → SDK cache (in order)
-      if (!isFirebaseConfigured || !db) return
+      if (!isFirebaseConfigured) return
       if (!cancelled) setSyncing(true)
 
-      const applyDocs = (docs) => {
+      try {
+        const token = await authUser.getIdToken()
+        const docs = await fetchCollectionREST(token)
         if (cancelled) return
         const fbTimes = new Set(docs.map(d => d.submittedAt))
         const merged = [...docs, ...localData.filter(s => !fbTimes.has(s.submittedAt))]
           .sort((a, b) => (b.submittedAt || '').localeCompare(a.submittedAt || ''))
         setSubmissions(merged); setDataSource('firebase'); setFirebaseReadError('')
-      }
-
-      const race = (p) => Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error('timeout')), 10000))])
-
-      try {
-        // 1. SDK direct server
-        const snap = await race(getDocsFromServer(collection(db, 'submissions')))
-        applyDocs(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-      } catch {
-        try {
-          // 2. Vercel proxy → REST API (bypasses network block entirely)
-          const docs = await race(fetchCollectionREST())
-          applyDocs(docs)
-        } catch {
-          try {
-            // 3. SDK local cache
-            const snap = await getDocs(collection(db, 'submissions'))
-            applyDocs(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-            if (!cancelled) setFirebaseReadError('Showing cached data — server unreachable')
-          } catch (e) {
-            if (!cancelled) setFirebaseReadError(e.message || 'All sync methods failed')
-          }
+      } catch (e) {
+        if (cancelled) return
+        if (e.status === 403) {
+          setAuthError(e.message || 'This account is not authorized for admin access.')
+          await signOut(auth)
+        } else {
+          setFirebaseReadError(e.message || 'Sync failed')
         }
       } finally {
         if (!cancelled) setSyncing(false)
@@ -614,7 +720,7 @@ export default function Admin() {
     loadData()
     const interval = setInterval(loadData, 900000)
     return () => { cancelled = true; clearInterval(interval) }
-  }, [authed, refreshTick])
+  }, [authUser, refreshTick])
 
   const handleReview = async (submission, decision, comment) => {
     const update = { handoverStatus: decision, supportComment: comment, reviewedAt: new Date().toISOString() }
@@ -630,7 +736,7 @@ export default function Admin() {
     // Await the REST proxy write — rollback if it fails
     if (submission.id && !submission.id.startsWith('local_')) {
       try {
-        await updateDocumentREST(submission.id, update)
+        await updateDocumentREST(submission.id, update, await authUser.getIdToken())
       } catch (e) {
         console.error('Review update failed:', e)
         const rb = JSON.parse(localStorage.getItem('tc_submissions') || '[]')
@@ -654,7 +760,7 @@ export default function Admin() {
 
     if (submission.id && !submission.id.startsWith('local_')) {
       try {
-        await updateDocumentREST(submission.id, update)
+        await updateDocumentREST(submission.id, update, await authUser.getIdToken())
       } catch (e) {
         console.error('Reassign failed:', e)
         alert('Failed to save reassignment — please check your connection and try again.')
@@ -671,7 +777,7 @@ export default function Admin() {
     setSubmissions(prev => prev.map(s => s.submittedAt === key ? { ...s, ...update } : s))
     setSelected(prev => prev ? { ...prev, ...update } : prev)
     if (submission.id && !submission.id.startsWith('local_')) {
-      try { await updateDocumentREST(submission.id, update) } catch (e) { console.error('Mark duplicate failed:', e) }
+      try { await updateDocumentREST(submission.id, update, await authUser.getIdToken()) } catch (e) { console.error('Mark duplicate failed:', e) }
     }
   }
 
@@ -684,7 +790,7 @@ export default function Admin() {
     setSubmissions(prev => prev.map(s => s.submittedAt === key ? { ...s, ...update } : s))
     setSelected(prev => prev ? { ...prev, ...update } : prev)
     if (submission.id && !submission.id.startsWith('local_')) {
-      try { await updateDocumentREST(submission.id, update) } catch (e) { console.error('Phone update failed:', e) }
+      try { await updateDocumentREST(submission.id, update, await authUser.getIdToken()) } catch (e) { console.error('Phone update failed:', e) }
     }
   }
 
@@ -703,18 +809,23 @@ export default function Admin() {
     setReviewing((prev) => prev ? { ...prev, ...updatePayload } : prev)
     setSelected((prev) => prev ? { ...prev, ...updatePayload } : prev)
 
-    // Push to Firebase — try SDK then REST
+    // Push to Firebase
     if (submission.id && !submission.id.startsWith('local_')) {
-      if (isFirebaseConfigured && db) {
-        updateDoc(doc(db, 'submissions', submission.id), updatePayload)
-          .catch(() => updateDocumentREST(submission.id, updatePayload).catch(e => console.error('Call log failed:', e)))
-      } else {
-        updateDocumentREST(submission.id, updatePayload).catch(e => console.error('Call log failed:', e))
-      }
+      authUser.getIdToken()
+        .then(token => updateDocumentREST(submission.id, updatePayload, token))
+        .catch(e => console.error('Call log failed:', e))
     }
   }
 
-  if (!authed) return <LoginScreen onLogin={() => setAuthed(true)} />
+  if (authChecking) return null
+  if (!authUser) return (
+    <LoginScreen
+      onSendLink={handleSendLink}
+      onConfirmEmail={handleConfirmEmail}
+      needsConfirmation={needsEmailConfirmation}
+      error={authError}
+    />
+  )
 
   const counts = { all: submissions.length, pending: 0, approved: 0, rejected: 0, in_progress: 0, duplicate: 0 }
   submissions.forEach((s) => {
@@ -782,6 +893,10 @@ export default function Admin() {
             <span className="bg-white/20 text-white text-xs font-semibold px-3 py-1 rounded-full">
               {submissions.length} total
             </span>
+            <button onClick={handleSignOut} title={authUser.email}
+              className="text-purple-200 hover:text-white text-xs font-medium px-3 py-1.5 rounded-lg border border-purple-500 hover:border-white transition-colors">
+              Sign out
+            </button>
           </div>
         </div>
       </div>
