@@ -7,7 +7,8 @@
 //           - with ?doctorName=&clinicName=                            -> single duplicate-check match
 //           - with ?search=                                            -> name-substring matches (capped)
 //           - otherwise                                                -> 400 (no anonymous full dump)
-//   POST  - open (anonymous submission creation from the Checklist form)
+//   POST  - open (anonymous submission creation from the Checklist form),
+//           requires doctorName/clinicName/bdmName to be non-empty
 //   PATCH - with a verified allowlisted token -> any field
 //           - without a token                -> only the signed-checklist-file fields
 
@@ -139,6 +140,16 @@ export default async function handler(req, res) {
         if (untouched.length) await batch.commit()
 
         res.status(200).json({ redistributed: untouched.length, counts })
+        return
+      }
+
+      // Reject anonymous writes missing the core identifying fields — the open
+      // endpoint has no other gate, so this is what stops junk/bot POSTs from
+      // creating blank rows in the admin table.
+      const REQUIRED_FIELDS = ['doctorName', 'clinicName', 'bdmName']
+      const missing = REQUIRED_FIELDS.filter((f) => !String(body[f] || '').trim())
+      if (missing.length) {
+        res.status(400).json({ error: `Missing required field(s): ${missing.join(', ')}` })
         return
       }
 
