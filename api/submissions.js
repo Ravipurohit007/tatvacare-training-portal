@@ -22,6 +22,14 @@ if (!admin.apps.length) {
 
 const db = admin.firestore()
 const SUPPORT_TEAM = ['Dilshab', 'Sukhanya', 'Tasleem', 'Ghousiya']
+// New-submission assignment weighting: per 10 submissions, Dilshab gets 1 and
+// the other three get 3 each, interleaved to avoid clustering. Only affects
+// new-submission assignment below — reassignment dropdown and the backlog
+// redistribute tool still use the full, even SUPPORT_TEAM list.
+const ASSIGNMENT_CYCLE = [
+  'Sukhanya', 'Tasleem', 'Ghousiya', 'Dilshab', 'Sukhanya',
+  'Tasleem', 'Ghousiya', 'Sukhanya', 'Tasleem', 'Ghousiya',
+]
 const ANON_ALLOWED_FIELDS = ['signedChecklistFile', 'signedChecklistName', 'signedChecklistUploadedAt']
 const ALLOWED_ADMIN_EMAILS = (process.env.ADMIN_ALLOWED_EMAILS || '')
   .split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
@@ -153,9 +161,9 @@ export default async function handler(req, res) {
         return
       }
 
-      // Server-side round-robin: count existing docs to determine assignee
+      // Server-side weighted round-robin: count existing docs to determine assignee
       const count = (await db.collection('submissions').count().get()).data().count
-      const data = { ...body, supportMember: SUPPORT_TEAM[count % SUPPORT_TEAM.length] }
+      const data = { ...body, supportMember: ASSIGNMENT_CYCLE[count % ASSIGNMENT_CYCLE.length] }
       const ref = await db.collection('submissions').add(data)
       res.status(200).json({ id: ref.id })
 
