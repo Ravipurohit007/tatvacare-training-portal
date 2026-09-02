@@ -171,6 +171,8 @@ export default function Checklist() {
     ? 'Must be exactly 10 digits' : ''
   const bdmPhoneErr = form.bdmPhone && !/^\d{10}$/.test(form.bdmPhone)
     ? 'Must be exactly 10 digits' : ''
+  const onboardingNumberErr = form.onboardingNumber && !/^\d{10}$/.test(form.onboardingNumber)
+    ? 'Must be exactly 10 digits' : ''
 
   const dateGapErr = (() => {
     if (!form.onboardingDate || !form.trainingDate) return ''
@@ -183,7 +185,7 @@ export default function Checklist() {
     form.doctorName.trim() &&
     form.clinicName.trim() &&
     form.clinicType &&
-    form.onboardingNumber.trim() &&
+    form.onboardingNumber && /^\d{10}$/.test(form.onboardingNumber) &&
     form.pocName.trim() &&
     form.pocNumber && /^\d{10}$/.test(form.pocNumber) &&
     form.onboardingDate &&
@@ -191,7 +193,7 @@ export default function Checklist() {
     form.region &&
     form.bdmName.trim() &&
     form.amName.trim() &&
-    !doctorPhoneErr && !frontdeskErr && !pocNumberErr && !bdmPhoneErr && !dateGapErr
+    !doctorPhoneErr && !frontdeskErr && !pocNumberErr && !bdmPhoneErr && !onboardingNumberErr && !dateGapErr
   )
 
   const yesCount = Object.values(checklist).filter((v) => v === 'Yes').length
@@ -494,11 +496,8 @@ export default function Checklist() {
             <PhoneInput label="POC Mobile Number" required value={form.pocNumber}
               onChange={set('pocNumber')} error={pocNumberErr} />
 
-            <div>
-              <label className="form-label">Onboarding Mobile Number <span className="text-red-500">*</span></label>
-              <input type="text" className="form-input" placeholder="e.g. OB-12345"
-                value={form.onboardingNumber} onChange={(e) => set('onboardingNumber')(e.target.value)} />
-            </div>
+            <PhoneInput label="Onboarding Mobile Number" required value={form.onboardingNumber}
+              onChange={set('onboardingNumber')} error={onboardingNumberErr} />
             <div>
               <label className="form-label">Onboarding Date <span className="text-red-500">*</span></label>
               <input type="date" className="form-input"
